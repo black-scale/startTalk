@@ -18,30 +18,37 @@
         </button>
       </div>
 
-        <!-- 선택된 채팅방이 있을 때 -->
-      <div v-if="selectedChatRoom" class="flex p-4 bg-green-200 rounded">
-        <h2 class="text-lg font-bold">{{ selectedChatRoom.region }} {{ selectedChatRoom.name }} </h2>
-        <button @click="removeChatRoom" class="mt-2 bg-yellow-200 text-brown-500 underline">
-          변경
-        </button>
-        <button @click="setting" class="focus:outline-none">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M12 8c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 10c-4.4 0-8-3.6-8-8s3.6-8 8-8 8 3.6 8 8-3.6 8-8 8zm0-14c-3.3 0-6 2.7-6 6s2.7 6 6 6 6-2.7 6-6-2.7-6-6-6z"/>
-        </svg>
-      </button>
-
-        
+      <!-- 선택된 채팅방이 있을 때 -->
+      <div v-if="selectedChatRoom" class="flex items-center justify-between p-4 bg-blue-200 rounded-lg">
+        <div class="flex items-center space-x-4">
+          <h2 class="text-lg font-bold">
+            {{ selectedChatRoom.region }} {{ selectedChatRoom.name }}
+          </h2>
+          <button 
+            @click="removeChatRoom" 
+            class="px-4 py-2 bg-yellow-200 text-brown-500 font-medium rounded hover:bg-yellow-300 transition">
+            변경
+          </button>
+        </div>
+        <button 
+          @click="setting" 
+          class="p-2 focus:outline-none bg-white rounded-full shadow hover:bg-gray-100 transition">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M12 8c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 10c-4.4 0-8-3.6-8-8s3.6-8 8-8 8 3.6 8 8-3.6 8-8 8zm0-14c-3.3 0-6 2.7-6 6s2.7 6 6 6 6-2.7 6-6-2.7-6-6-6z"/>
+          </svg>
+        </button>        
       </div>
       <!-- 선택된 채팅방이 없을 때 버튼 노출 -->
       <div v-else>
         <h2 class="text-lg font-bold">(2/2) 스타트톡 사용을 할 채팅방을 골라보세요</h2>
-          <button @click="openChatRoom" class="mt-2 w-full bg-green-500 text-white py-2 rounded-lg shadow-md hover:bg-green-600 focus:outline-none">
+          <button @click="openChatRoom" class="mt-2 w-full bg-blue-500 text-white py-2 rounded-lg shadow-md hover:bg-green-600 focus:outline-none">
             채팅방 선택
           </button>
       </div>   
 
-      <div v-if="selectedChatRoom && isInitialized" class="flex overflow-x-auto space-x-4">
+      <!-- 모두 선택됐을 때 메뉴 바 노출 -->
+      <div v-if="selectedChatRoom && isInitialized" class="flex overflow-x-auto space-x-4 my-2">
         <button class="flex flex-shrink-0 items-center w-40 bg-blue-200 px-4 py-2 rounded">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 4v16m8-8H4" />
