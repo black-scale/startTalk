@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import Todos from './components/Todos.vue'
+import KakaoMessageSender from './components/KakaoMessageSender.vue'
+import MainView from './components/MainView.vue'
 </script>
 
 <template>
   <main>
-    <Todos />
+    <MainView />
   </main>
 </template>
-
