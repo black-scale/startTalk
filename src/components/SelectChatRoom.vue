@@ -39,50 +39,41 @@
     export default {
     data() {
         return {
-        activeRegion: "전체",
-        // '전체' 항목 없이 각 지역별로 데이터 정의
-        stores: {
-            "강남구": [
-            { region: "강남구", name: "가게이름3" },
-            { region: "강남구", name: "가게이름4" },
-            { region: "강남구", name: "가게이름5" },
-            { region: "강남구", name: "가게이름6" },
-            { region: "강남구", name: "가게이름7" },
-            { region: "강남구", name: "가게이름8" }
-            ],
-            "인천": [
-            { region: "인천", name: "가게이름1" },
-            { region: "인천", name: "가게이름2" }
-            ],
-            "수원": [
-            { region: "수원", name: "가게이름3" },
-            { region: "수원", name: "가게이름4" },
-            { region: "수원", name: "가게이름5" },
-            { region: "수원", name: "가게이름6" },
-            { region: "수원", name: "가게이름7" },
-            { region: "수원", name: "가게이름8" }
-            ],
-            "동작구": [
-            { region: "동작구", name: "가게이름1" },
-            { region: "동작구", name: "가게이름2" }
+            activeRegion: "전체",
+            // '전체' 항목 없이 각 지역별로 데이터 정의
+            stores: [
+                { region: "강남구", name: "가게이름3" },
+                { region: "강남구", name: "가게이름4" },
+                { region: "강남구", name: "가게이름5" },
+                { region: "강남구", name: "가게이름6" },
+                { region: "강남구", name: "가게이름7" },
+                { region: "강남구", name: "가게이름8" },
+                { region: "인천", name: "가게이름1" },
+                { region: "인천", name: "가게이름2" },
+                { region: "수원", name: "가게이름3" },
+                { region: "수원", name: "가게이름4" },
+                { region: "수원", name: "가게이름5" },
+                { region: "수원", name: "가게이름6" },
+                { region: "수원", name: "가게이름7" },
+                { region: "수원", name: "가게이름8" },
+                { region: "동작구", name: "가게이름1" },
+                { region: "동작구", name: "가게이름2" }       
             ]
-
-        }
         };
     },
     computed: {
         // 첫번째 탭은 "전체", 그 뒤로 각 지역 이름이 나옵니다.
         regions() {
-        return ["전체", ...Object.keys(this.stores)];
+            const all_regions = this.stores.map(store => store.region);
+            return ["전체", ... Array.from(new Set(all_regions))];
         },
-        // '전체' 선택 시에는 모든 지역의 가게 데이터를 합치고,
-        // 특정 지역 선택 시 해당 지역의 데이터를 반환합니다.
-        displayStores() {
-        if (this.activeRegion === "전체") {
-            return Object.values(this.stores).flat();
-        } else {
-            return this.stores[this.activeRegion] || [];
-        }
+        
+        // 가게 목록 불러오기
+        displayStores() {            
+            const { activeRegion, stores } = this;
+            return activeRegion === "전체"
+                ? stores
+                : stores.filter(store => store.region === activeRegion);
         }
     },
     methods: {

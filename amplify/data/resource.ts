@@ -14,6 +14,15 @@ const schema = a.schema({
     .authorization((allow) => [allow.publicApiKey()]),
 });
 
+const sessionApiKey = a.schema({
+  Apikey: a
+    .model({
+      session_id: a.string(),
+      apikey: a.string(),
+    })
+    .authorization((allow) => [allow.publicApiKey()]),
+});
+
 export type Schema = ClientSchema<typeof schema>;
 
 export const data = defineData({

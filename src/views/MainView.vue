@@ -55,7 +55,7 @@
           </svg>
           키워드 검색
         </button>
-        <button class="flex-shrink-0 w-30 bg-blue-200 px-4 py-2 rounded">키워드 편집</button>
+        <button class="flex-shrink-0 w-30 bg-blue-200 px-4 py-2 rounded" @click="$router.push('/keyword')" >키워드 편집</button>
         <button class="flex-shrink-0 w-30 bg-blue-200 px-4 py-2 rounded">푸시알림 ON</button>
         <button class="flex-shrink-0 w-30 bg-blue-200 px-4 py-2 rounded">작동중:자동 전송</button>
         <button class="flex-shrink-0 w-30 bg-blue-200 px-4 py-2 rounded">작동중:수동 전송</button>
@@ -69,7 +69,7 @@
 
 
 <script>
-import SelectChatRoom from './SelectChatRoom.vue';
+import SelectChatRoom from '../components/SelectChatRoom.vue';
 export default {
   components: {
     SelectChatRoom 
@@ -85,6 +85,22 @@ export default {
     };
   },
   methods: {
+    async saveSession() {
+      try {
+        // DataStore.save()를 통해 Session 모델 인스턴스 저장
+        const session = await DataStore.save(
+          new Session({
+            apiKey: this.kakaoApiKey,
+            createdAt: new Date().toISOString(),
+          })
+        );
+        console.log('세션 저장 성공:', session);
+        // 생성된 세션의 고유 id를 localStorage 등에 저장
+        localStorage.setItem('sessionId', session.id);
+      } catch (error) {
+        console.error('세션 저장 실패:', error);
+      }
+    },
     kakaoInitialize() {
       if (!this.kakaoApiKey) {
         alert("Please enter a Kakao API key.");
