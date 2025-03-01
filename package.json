@@ -11,6 +11,9 @@
     "type-check": "vue-tsc --build --force"
   },
   "dependencies": {
+    "@parcel/watcher": "^2.5.1",
+    "@types/puppeteer": "^5.4.7",
+    "amplify": "^0.0.11",
     "aws-amplify": "^6.6.6",
     "vue": "^3.4.21",
     "vue-router": "^4.5.0",
@@ -19,7 +22,7 @@
   },
   "devDependencies": {
     "@aws-amplify/backend": "^1.5.0",
-    "@aws-amplify/backend-cli": "^1.2.9",
+    "@aws-amplify/backend-cli": "^1.4.11",
     "@tsconfig/node20": "^20.1.4",
     "@types/node": "^20.12.5",
     "@vitejs/plugin-vue": "^5.0.4",

@@ -19,6 +19,15 @@
         placeholder="Enter your message"
       />
     </div>
+    <div>
+      <label for="receiver">Receiver:</label>
+      <input
+        type="text"
+        id="receiver"
+        v-model="receiver"
+        placeholder="Enter receiver"
+      />
+    </div>
     <button @click="initializeAndSend">Send Message</button>
   </div>
 </template>
@@ -29,6 +38,7 @@ export default {
     return {
       kakaoApiKey: "",
       message: "",
+      receiver: "",
       isInitialized: false
     };
   },
@@ -51,15 +61,12 @@ export default {
         alert("Please enter a message to send.");
         return;
       }
-      // sendDefault를 호출하여 메시지 전송 인터페이스를 엽니다.
-      window.Kakao.Link.sendDefault({
-        objectType: "text",
-        text: this.message,
-        link: {
-          mobileWebUrl: "https://yourwebsite.com",
-          webUrl: "https://yourwebsite.com"
-        }
-      });
+
+      fetch("http://localhost:3000/run-selenium?userKey="+this.kakaoApiKey+"&userMessage="+this.message+"&friendName="+this.receiver)
+    .then(response => response.text())
+    .then(data => console.log("Selenium 결과:", data))
+    .catch(error => console.error("API 호출 오류:", error))
+
     }
   }
 };
