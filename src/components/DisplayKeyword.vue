@@ -2,7 +2,7 @@
   <!-- 키워드 리스트 -->
   <div class="p-4">
     <div 
-      v-for="(entry, index) in localKeywords" 
+      v-for="(entry, index) in filteredKeywords" 
       :key="index" 
       class="flex items-center justify-between bg-purple-100 p-2 rounded mb-2">
       <div class="flex items-center">
@@ -12,26 +12,6 @@
       </div>
       <button @click="handleRemoveKeyword(index)" class="text-red-500 font-medium bg-opacity-100">x</button>
     </div>
-    </div>
-  <div>
-    <h2>Display Keyword Entries</h2>
-    <ul>
-      <li v-for="(entry, index) in keywordEntries" :key="index">
-        <p><strong>Keyword:</strong> {{ entry.keyword }}</p>
-        <p><strong>Receiver:</strong> {{ entry.receiver }}</p>
-        <div v-if="entry.set_time.length">
-          <p>Set Time Items:</p>
-          <ul>
-            <li v-for="(item, idx) in entry.set_time" :key="idx">
-              Time: {{ item.time }}, Word: {{ item.word }}
-            </li>
-          </ul>
-        </div>
-        <div v-else>
-          <p>No time items available.</p>
-        </div>
-      </li>
-    </ul>
   </div>
 </template>
 
@@ -41,22 +21,39 @@ import { KeywordEntry } from '@/store/modules/keywordModule'
 
 export default {
   namespaced: true,
-   computed: {
-    // Vuex에서 원본 키워드 데이터를 읽어옴
-    ...mapState("keywordModel", {
-      keywordEntries: state => state.entries
-    }),
-    // 모든 로컬 키워드가 선택되어 있는지 확인
-    allSelected() {
-      return this.localKeywords.length > 0 && this.localKeywords.every(entry => entry.checked);
-    }
-  },
-   data() {
+  data() {
     return {
       // 체크박스 상태를 관리하기 위한 로컬 복사본
       localKeywords: []
     };
   },
+  props: {
+    searchQuery: {
+      type: String,
+      default: ''
+    }
+  },
+   computed: {
+    // Vuex에서 원본 키워드 데이터를 읽어옴
+    ...mapState("keywordModel", {
+      keywordEntries: state => state.entries
+    }),
+    filteredKeywords() {
+      if (!this.searchQuery) {
+        return this.localKeywords;
+      }
+      const query = this.searchQuery;
+      return this.localKeywords.filter(entry =>
+        entry.keyword.includes(query)
+      );
+      
+    },
+    // 모든 로컬 키워드가 선택되어 있는지 확인
+    allSelected() {
+      return this.localKeywords.length > 0 && this.localKeywords.every(entry => entry.checked);
+    }
+  },
+
     mounted() {
     // 만약 마운트 시점에 keywordEntries가 이미 존재한다면 초기화
     if (this.keywordEntries) {
@@ -90,9 +87,8 @@ export default {
     },
     // 삭제 버튼 클릭 시 로컬과 Vuex에서 모두 삭제 처리
     handleRemoveKeyword(index) {
-      const id = this.localKeywords[index].id;
       // Vuex 스토어에서 삭제
-      this.removeKeyword(id);
+      this.removeKeywordEntry(index);
       // 로컬 배열에서 삭제
       this.localKeywords.splice(index, 1);
     }

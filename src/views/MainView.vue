@@ -115,15 +115,14 @@ export default {
         window.Kakao.init(this.kakaoApiKey);
         this.isInitialized = true;
       }
-      // sendDefault를 호출하여 메시지 전송 인터페이스를 엽니다.
-      // window.Kakao.Link.sendDefault({
-      //   objectType: "text",
-      //   text: "로그인 완료!",
-      //   link: {
-      //     mobileWebUrl: "https://yourwebsite.com",
-      //     webUrl: "https://yourwebsite.com"
-      //   }
-      // });
+      
+      //sendDefault를 호출하여 메시지 전송 인터페이스를 엽니다.
+      fetch("http://localhost:3000/run-selenium?userKey="+this.kakaoApiKey+"&userMessage=스타트톡 로그인 완료"+"&friendName=send_myself")
+        .then(response => response.text())
+        .then(data => console.log("Selenium 결과:", data))
+        .catch(error => console.error("API 호출 오류:", error))
+
+
     },
     setting() {
         alert('Settings function executed');
