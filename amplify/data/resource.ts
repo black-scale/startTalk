@@ -7,18 +7,20 @@ specifies that any user authenticated via an API key can "create", "read",
 "update", and "delete" any "Todo" records.
 =========================================================================*/
 const schema = a.schema({
-  Todo: a
+  // kakaoLoginCookie 모델 정의: API 키 저장용
+  kakaoLoginCookie: a
     .model({
-      content: a.string(),
-    })
-    .authorization((allow) => [allow.publicApiKey()]),
-});
+      APIkey: a.string(),
+      _T_ANO: a.string(),       // 사용자가 입력한 API 키
+      _kawlt: a.string(),   
+      _kawltea: a.string(),   
+      _karmt: a.string(),   
+      _karmtea: a.string(),   
+      _kahai: a.string(),   
+      _kau: a.string(),   
 
-const sessionApiKey = a.schema({
-  Apikey: a
-    .model({
-      session_id: a.string(),
-      apikey: a.string(),
+      createdAt: a.string(),    // 세션 생성 시각
+      expireAt: a.string()
     })
     .authorization((allow) => [allow.publicApiKey()]),
 });
