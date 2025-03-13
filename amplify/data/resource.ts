@@ -23,6 +23,17 @@ const schema = a.schema({
       expireAt: a.string()
     })
     .authorization((allow) => [allow.publicApiKey()]),
+
+    startTalkMessage: a
+    .model({
+      sender: a.string(),
+      message: a.string(),       // 사용자가 입력한 API 키
+      room: a.string(),   
+      
+      createdAt: a.string(),    // 세션 생성 시각
+      expireAt: a.string()
+    })
+    .authorization((allow) => [allow.publicApiKey()]),
 });
 
 export type Schema = ClientSchema<typeof schema>;
