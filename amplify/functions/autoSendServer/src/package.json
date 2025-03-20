@@ -10,8 +10,8 @@
   "description": "",
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.767.0",
-    "chrome-aws-lambda": "^10.1.0",
-    "puppeteer-core": "^21.8.0"
+    "@sparticuz/chromium": "^133.0.0",
+    "puppeteer-core": "^24.4.0"
   },
   "devDependencies": {
     "@types/aws-lambda": "^8.10.147",
