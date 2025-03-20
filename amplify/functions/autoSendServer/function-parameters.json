@@ -1,0 +1,6 @@
+{
+    "ENV": "dev",
+    "COOKIE_TABLE": "KakaoLoginCookie",
+    "SEND_DEFAULT_URL": "https://dev.d4gwjzbx3yq4k.amplifyapp.com/AutoSend"
+  }
+  
