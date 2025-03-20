@@ -174,6 +174,13 @@ export const handler = async (event: APIGatewayEvent, context: Context): Promise
     await new Promise(resolve => setTimeout(resolve, 50000));
   } catch (error) {
     console.error("오류 발생:", error);
+    if (browser) {
+      await browser.close();
+    }
+    return {
+      statusCode: 500,
+      body: JSON.stringify(error),
+    };
   } finally {
     if (browser) {      
       await browser.close();
@@ -184,14 +191,4 @@ export const handler = async (event: APIGatewayEvent, context: Context): Promise
     statusCode: 200,
     body: 'Auto share executed successfully',
   };
-  } catch (error) {
-    console.error("오류 발생:", error);
-    if (browser) {
-      await browser.close();
-    }
-    return {
-      statusCode: 500,
-      body: JSON.stringify(error),
-    };
-  }
 };
