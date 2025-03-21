@@ -7,7 +7,7 @@ const requiredCookies = ['_kahai', '_karmt', '_karmtea', '_kawlt', '_kawltea'];
 
 // 환경 변수 또는 직접 설정
 const COOKIE_TABLE = process.env.COOKIE_TABLE || 'KakaoLoginCookie';
-const SEND_DEFAULT_URL = process.env.SEND_DEFAULT_URL || 'https://yourdomain.com/AutoSend';
+const SEND_DEFAULT_URL = process.env.SEND_DEFAULT_URL || 'https://dev.d4gwjzbx3yq4k.amplifyapp.com/AutoSend';
 
 /**
  * DynamoDB에서 특정 사용자(userId)의 쿠키 정보를 조회하는 함수.
