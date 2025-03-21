@@ -1,9 +1,10 @@
-import { createRouter, createWebHistory, RouteRecordRaw } from 'vue-router'
+import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 import MainView from '../views/MainView.vue'
 import KeywordView from '../views/KeywordView.vue'
 import RegisterKeywordView from '../views/RegisterKeywordView.vue'
 import AutoSend from '../views/AutoSend.vue'
 import KakaoMessageSender from '../components/KakaoMessageSender.vue'
+
 
 const routes: Array<RouteRecordRaw> = [
   { path: '/', name: 'Home', component: MainView },

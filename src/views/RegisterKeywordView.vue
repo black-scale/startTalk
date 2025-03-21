@@ -27,7 +27,7 @@
 <script lang="ts">
 import { defineComponent, ref } from 'vue'
 import { useStore } from 'vuex'
-import { KeywordEntry, TimeItem } from '@/store/modules/keywordModule'
+import { KeywordEntry, TimeItem } from '../store/modules/keywordModule'
 
 export default defineComponent({
   name: 'RegisterKeywordEntry',

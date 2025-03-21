@@ -1,4 +1,4 @@
-import { APIGatewayEvent, Context, APIGatewayProxyResult } from 'aws-lambda';
+import type { APIGatewayEvent, Context, APIGatewayProxyResult } from 'aws-lambda';
 import chromium from '@sparticuz/chromium';
 import puppeteer, { Browser, Page, Cookie, Target } from 'puppeteer-core';
 import { DynamoDBClient, GetItemCommand , PutItemCommand} from '@aws-sdk/client-dynamodb';

@@ -4,13 +4,15 @@
     {
       "path": "./tsconfig.node.json"
     },
-    {
-      "path": "./tsconfig.app.json"
-    }
   ],
   "include": [
     "src/**/*.ts",
     "src/**/*.d.ts",
     "src/**/*.vue"
-  ]
+  ],
+  "compilerOptions": {
+    "noEmit": true, 
+    "resolveJsonModule": true,
+    "esModuleInterop": true  
+  },
 }
