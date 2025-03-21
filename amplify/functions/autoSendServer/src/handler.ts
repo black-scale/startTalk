@@ -1,7 +1,9 @@
 import { APIGatewayEvent, Context, APIGatewayProxyResult } from 'aws-lambda';
 import chromium from '@sparticuz/chromium';
-import puppeteer, { Browser, Page, Cookie } from 'puppeteer-core';
-import { DynamoDBClient, GetItemCommand } from '@aws-sdk/client-dynamodb';
+import puppeteer, { Browser, Page, Cookie, Target } from 'puppeteer-core';
+import { DynamoDBClient, GetItemCommand , PutItemCommand} from '@aws-sdk/client-dynamodb';
+
+const requiredCookies = ['_kahai', '_karmt', '_karmtea', '_kawlt', '_kawltea'];
 
 // 환경 변수 또는 직접 설정
 const COOKIE_TABLE = process.env.COOKIE_TABLE || 'KakaoLoginCookie';
@@ -32,6 +34,61 @@ async function getCookiesFromDynamo(userId: string): Promise<Cookie[] | null> {
   }
 }
 
+async function getLoginInfoFromDynamo(userKey: string): Promise<{ userID: string; userPW: string } | null> {
+  const ddbClient = new DynamoDBClient({ region: process.env.AWS_REGION || 'us-east-1' });
+  const params = {
+    TableName: 'kakaoLoginInfo', // 사용자 자격증명을 저장하는 테이블 이름
+    Key: {
+      userKey: { S: userKey },
+    },
+  };
+
+  try {
+    const command = new GetItemCommand(params);
+    const response = await ddbClient.send(command);
+    if (!response.Item) {
+      console.error('No credentials found for userKey:', userKey);
+      return null;
+    }
+    const userID = response.Item.userID?.S;
+    const userPW = response.Item.userPW?.S;
+    if (!userID || !userPW) {
+      console.error('Incomplete credentials for userKey:', userKey);
+      return null;
+    }
+    return { userID, userPW };
+  } catch (error) {
+    console.error('DynamoDB 조회 오류:', error);
+    return null;
+  }
+}
+
+async function storeCookiesInDynamo(userKey: string, cookies: Cookie[]): Promise<void> {
+  // 필수 쿠키의 expire 값 중 가장 작은 값을 계산 (만료 시간이 있는 쿠키만)
+  let minExpire: number | null = null;
+  for (const cookie of cookies) {
+    if (requiredCookies.includes(cookie.name) && cookie.expires && cookie.expires > 0) {
+      if (minExpire === null || cookie.expires < minExpire) {
+        minExpire = cookie.expires;
+      }
+    }
+  }
+  if (minExpire === null) {
+    minExpire = 0;
+  }
+  const ddbClient = new DynamoDBClient({ region: process.env.AWS_REGION || 'us-east-1' });
+  const params = {
+    TableName: COOKIE_TABLE,
+    Item: {
+      userKey: { S: userKey },
+      cookieData: { S: JSON.stringify(cookies) },
+      expireAt: { N: minExpire.toString() },
+      createdAt: { S: new Date().toISOString() },
+    },
+  };
+  await ddbClient.send(new PutItemCommand(params));
+  console.log(`쿠키 정보가 DynamoDB(${COOKIE_TABLE})에 저장되었습니다.`);
+}
 /**
  * Lambda 핸들러
  * Query string 매개변수:
@@ -57,6 +114,7 @@ export const handler = async (event: APIGatewayEvent, context: Context): Promise
     console.log(`쿠키 존재 여부: ${storedCookies ? '있음' : '없음'}`);
 
     // 2. Puppeteer 실행
+
     const browser = await puppeteer.launch({
       args: chromium.args,
       defaultViewport: chromium.defaultViewport,
@@ -65,128 +123,242 @@ export const handler = async (event: APIGatewayEvent, context: Context): Promise
     });
 
     let page: Page = await browser.newPage();
-
+    const targetUrl = `${SEND_DEFAULT_URL}?key=${encodeURIComponent(userKey)}&message=${encodeURIComponent(userMessage)}`;
     // 3. 쿠키가 저장되어 있다면, 페이지에 주입
     if (storedCookies) {
-      await page.setCookie(...storedCookies);
+  
+      
+      await browser.setCookie(...storedCookies);
       console.log("쿠키를 브라우저에 주입했습니다.");
-    } else {
-      console.log("저장된 쿠키가 없으므로, non-headless 모드에서 실행하여 사용자 로그인을 유도합니다.");
-      friendName = "send_myself";
-    }
 
-    // 4. sendDefault 전용 페이지로 이동 (userKey, userMessage 전달)
-    const targetUrl = `${SEND_DEFAULT_URL}?key=${encodeURIComponent(userKey)}&message=${encodeURIComponent(userMessage)}`;
-    await page.goto(targetUrl, { waitUntil: 'networkidle2' });
-    console.log('전용 sendDefault 페이지 로드 완료');
+      // 4. sendDefault 전용 페이지로 이동 (userKey, userMessage 전달)
+      
+      await page.goto(targetUrl, { waitUntil: 'networkidle2' });
+      console.log('전용 sendDefault 페이지 로드 완료');
 
-    // 4. sendDefault 호출 후 공유 피커 팝업 창이 뜨기를 대기
-    const popupTarget: Target = await browser.waitForTarget((target: Target) => {
-      // 메인 페이지의 target(opener)이면 공유 피커 팝업으로 판단 (단, URL이 'data:,'가 아니어야 함)
-      return target.opener() === page.target() && target.url() !== 'data:,';
-    });
-    const popupPage: Page | null = await popupTarget.page();
-    if (!popupPage) {
-      console.error("팝업 페이지를 찾지 못했습니다.");
-      return;
-    }
-    await popupPage.bringToFront();
-    console.log('공유 피커 팝업 창 전환 완료');
+      // 4. sendDefault 호출 후 공유 피커 팝업 창이 뜨기를 대기
+      const popupTarget: Target = await browser.waitForTarget((target: Target) => {
+        // 메인 페이지의 target(opener)이면 공유 피커 팝업으로 판단 (단, URL이 'data:,'가 아니어야 함)
+        return target.opener() === page.target() && target.url() !== 'data:,';
+      });
+      const popupPage: Page | null = await popupTarget.page();
+      if (!popupPage) {
+        console.error("팝업 페이지를 찾지 못했습니다.");
+        return {
+          statusCode: 500,
+          body: "팝업 페이지를 찾지 못했습니다.",
+        };
+      }
+      await popupPage.bringToFront();
+      console.log('공유 피커 팝업 창 전환 완료');
 
-    // 5. (여기서 sendDefault 호출 후 자동화 작업을 추가할 수 있음)
- const friendListSelector = 'div.unit_chat';
-    await popupPage.waitForSelector('div.unit_chat', { timeout: 600000 });
-    let friendList = await popupPage.$$(friendListSelector);
-    if (friendList.length === 0) {
-      console.error("친구 목록을 로드하지 못했습니다. 로그인 상태를 확인하세요.");
-      return;
-    }
-    console.log('친구 목록 로드 완료');
+      // 5. (여기서 sendDefault 호출 후 자동화 작업을 추가할 수 있음)
+      const friendListSelector = 'div.unit_chat';
+      await popupPage.waitForSelector('div.unit_chat', { timeout: 600000 });
+      let friendList = await popupPage.$$(friendListSelector);
+      if (friendList.length === 0) {
+        console.error("친구 목록을 로드하지 못했습니다. 로그인 상태를 확인하세요.");
+        return {
+          statusCode: 500,
+          body: "친구 목록을 로드하지 못했습니다. 로그인 상태를 확인하세요.",
+        };
+      }
+      console.log('친구 목록 로드 완료');
 
-    // 6. 원하는 친구를 찾아 선택
-    let friendElements = await popupPage.$$('div.unit_chat');
-    let friendFound = false;
-    let scrollAttempts = 0;
-    // 스크롤이 더 이상 내려가지 않을 때까지 반복
-    while (!friendFound) {
-      // 현재 페이지의 친구 목록 검색
-      friendElements = await popupPage.$$(friendListSelector);
-      for (const friendEl of friendElements) {
-        const nameEl = await friendEl.$('strong.tit_name');
-        if (nameEl) {
-          const text: string = await popupPage.evaluate((el: any) => el.innerText, nameEl);
-          if (text.trim() === friendName || friendName == "send_myself") {
-            const checkBox = await friendEl.$('input.inp_check');
-            if (checkBox) {
-              await checkBox.click();
-              console.log(`"${text.trim()}" 선택 완료`);
-              friendFound = true;
-              break;
+      // 6. 원하는 친구를 찾아 선택
+      let friendElements = await popupPage.$$('div.unit_chat');
+      let friendFound = false;
+      let scrollAttempts = 0;
+      // 스크롤이 더 이상 내려가지 않을 때까지 반복
+      while (!friendFound) {
+        // 현재 페이지의 친구 목록 검색
+        friendElements = await popupPage.$$(friendListSelector);
+        for (const friendEl of friendElements) {
+          const nameEl = await friendEl.$('strong.tit_name');
+          if (nameEl) {
+            const text: string = await popupPage.evaluate((el: any) => el.innerText, nameEl);
+            if (text.trim() === friendName || friendName == "send_myself") {
+              const checkBox = await friendEl.$('input.inp_check');
+              if (checkBox) {
+                await checkBox.click();
+                console.log(`"${text.trim()}" 선택 완료`);
+                friendFound = true;
+                break;
+              }
             }
           }
         }
+        if (friendFound) break;
+
+        // 스크롤 높이가 더 이상 증가하지 않는지 확인하며 스크롤 진행
+        const prevScrollHeight = await popupPage.evaluate(() => {
+          const container = document.getElementById('scrollableDiv');
+          return container ? container.scrollHeight : document.body.scrollHeight;
+        });
+
+        // 스크롤을 내립니다.
+        await popupPage.evaluate(() => {
+          const container = document.getElementById('scrollableDiv');
+          if (container) {
+            container.scrollTop = container.scrollHeight;
+          } else {
+            window.scrollTo(0, document.body.scrollHeight);
+          }
+        });
+        await new Promise(resolve => setTimeout(resolve, 500)); // 2초 대기
+
+        const currentScrollHeight = await popupPage.evaluate(() => {
+          const container = document.getElementById('scrollableDiv');
+          return container ? container.scrollHeight : document.body.scrollHeight;
+        });
+
+        // 스크롤이 더 이상 내려가지 않는 경우 종료
+        if (currentScrollHeight === prevScrollHeight) {
+          console.log("더 이상 스크롤할 내용이 없습니다.");
+          break;
+        }
+        scrollAttempts++;
+        console.log(`스크롤 시도 횟수: ${scrollAttempts}`);
       }
-      if (friendFound) break;
 
-      // 스크롤 높이가 더 이상 증가하지 않는지 확인하며 스크롤 진행
-      const prevScrollHeight = await popupPage.evaluate(() => {
-        const container = document.getElementById('scrollableDiv');
-        return container ? container.scrollHeight : document.body.scrollHeight;
+      if (!friendFound) {
+        console.error(`"${friendName}"를 찾지 못했습니다.`);
+        return {
+          statusCode: 500,
+          body: `"${friendName}"를 찾지 못했습니다.`,
+        };
+      }
+
+      // 6. "공유하기" 버튼을 찾아 클릭
+      const shareButton = await popupPage.waitForSelector('button.btn_commit', { timeout: 5000 });
+      if (shareButton) {
+        await shareButton.click();
+      }
+      console.log('공유하기 버튼 클릭 완료');
+
+      
+      // 결과 확인을 위해 잠시 대기
+      await new Promise(resolve => setTimeout(resolve, 500));
+    
+    } else {
+
+      //저장된 쿠키가 없을때 로그인창 띄움움\
+      console.log("저장된 쿠키가 없으므로, non-headless 모드에서 실행하여 사용자 로그인을 유도합니다.");
+      friendName = "send_myself";
+
+      // 2. 로그인 페이지로 이동 (실제 로그인 페이지 URL로 교체)
+      await page.goto(targetUrl, { waitUntil: 'networkidle2' });
+
+      // 4. sendDefault 호출 후 공유 피커 팝업 창이 뜨기를 대기
+      const popupTarget: Target = await browser.waitForTarget((target: Target) => {
+        // 메인 페이지의 target(opener)이면 공유 피커 팝업으로 판단 (단, URL이 'data:,'가 아니어야 함)
+        return target.opener() === page.target() && target.url() !== 'data:,';
       });
+      const popupPage: Page | null = await popupTarget.page();
+      if (!popupPage) {
+        console.error("팝업 페이지를 찾지 못했습니다.");
+        return {
+          statusCode: 500,
+          body: "팝업 페이지를 찾지 못했습니다.",
+        };
+      }
+      await popupPage.bringToFront();
+      console.log('공유 피커 팝업 창 전환 완료');
 
-      // 스크롤을 내립니다.
+      // 3. DynamoDB에서 사용자 자격증명 조회
+      const credentials = await getLoginInfoFromDynamo(userKey);
+      if (!credentials) {
+        console.error('자격증명을 가져오지 못했습니다.');
+        return {
+          statusCode: 403,
+          body: JSON.stringify('자격증명을 가져오지 못했습니다.'),
+        };
+      }
+      const _id = credentials.userID;
+      const _pw = credentials.userPW;
+      console.log(`조회된 자격증명: ID=${_id}, PW=${_pw}`);
+
+      await popupPage.type('#loginId--1', _id, { delay: 50 });
+      await popupPage.type('#password--2', _pw, { delay: 50 });
+
+      // 4. "간편로그인 정보 저장" 체크박스를 체크하고 값 변경
       await popupPage.evaluate(() => {
-        const container = document.getElementById('scrollableDiv');
-        if (container) {
-          container.scrollTop = container.scrollHeight;
-        } else {
-          window.scrollTo(0, document.body.scrollHeight);
+        const checkbox = document.getElementById('saveSignedIn--4') as HTMLInputElement;
+        if (checkbox) {
+          checkbox.checked = true;
+          checkbox.value = 'true';
         }
       });
-      await new Promise(resolve => setTimeout(resolve, 500)); // 2초 대기
 
-      const currentScrollHeight = await popupPage.evaluate(() => {
-        const container = document.getElementById('scrollableDiv');
-        return container ? container.scrollHeight : document.body.scrollHeight;
-      });
+      // 5. 로그인 버튼 클릭
+      await popupPage.click('button.btn_g.highlight.submit');
 
-      // 스크롤이 더 이상 내려가지 않는 경우 종료
-      if (currentScrollHeight === prevScrollHeight) {
-        console.log("더 이상 스크롤할 내용이 없습니다.");
-        break;
+      // 6. 로그인 후 페이지 전환을 기다림
+      await popupPage.waitForNavigation({ waitUntil: 'networkidle2' });
+      console.log('로그인 및 페이지 전환 완료');
+
+      // 7. 5분(300,000ms) 대기
+      // 5분(300,000ms) 동안 팝업 창이 닫히는지 주기적으로 확인
+      const maxWaitTime = 300000; // 5분
+      const checkInterval = 1000; // 1초마다 확인
+      const startTime = Date.now();
+      let popupClosed = false;
+
+      while (Date.now() - startTime < maxWaitTime) {
+        if (popupPage.isClosed()) {
+          popupClosed = true;
+          // 6. 팝업 페이지가 닫히는 것을 감지 (close 이벤트)
+          // 팝업 페이지가 닫히면, 브라우저 컨텍스트에서 쿠키를 가져와 DynamoDB에 전송
+          console.log('팝업 페이지가 닫혔습니다. 쿠키 정보를 DynamoDB에 전송합니다.');
+          // 브라우저의 기본 컨텍스트에서 쿠키를 가져옵니다.
+          const allCookies: Cookie[] = await browser!.defaultBrowserContext().cookies();
+          // DynamoDB에 저장할 때, 필요한 쿠키 데이터만 필터링할 수 있습니다.
+          // 여기서는 전체 쿠키를 JSON 문자열로 저장합니다.
+          // expireAt은 필수 쿠키 중 가장 빠른 만료 시간을 계산합니다.
+          let minExpire: number | null = null;
+          for (const cookie of allCookies) {
+            if (requiredCookies.includes(cookie.name) && cookie.expires && cookie.expires > 0) {
+              if (minExpire === null || cookie.expires < minExpire) {
+                minExpire = cookie.expires;
+              }
+            }
+          }
+          if (minExpire === null) minExpire = 0;
+          // DynamoDB에 쿠키 전송
+          const ddbClient = new DynamoDBClient({ region: process.env.AWS_REGION || 'us-east-1' });
+          const putParams = {
+            TableName: COOKIE_TABLE,
+            Item: {
+              userKey: { S: userKey },
+              cookieData: { S: JSON.stringify(allCookies) },
+              expireAt: { N: minExpire.toString() },
+              createdAt: { S: new Date().toISOString() },
+            },
+          };
+          await ddbClient.send(new PutItemCommand(putParams));
+          console.log(`쿠키 정보가 DynamoDB(${COOKIE_TABLE})에 저장되었습니다.`);
+            
+          break;
+        }
+        // 1초 대기 후 다시 확인
+        await new Promise(resolve => setTimeout(resolve, checkInterval));
       }
-      scrollAttempts++;
-      console.log(`스크롤 시도 횟수: ${scrollAttempts}`);
-    }
 
-    if (!friendFound) {
-      console.error(`"${friendName}"를 찾지 못했습니다.`);
-      return;
-    }
+      if (!popupClosed) {
+        console.log("5분 후에도 팝업 창이 열려있습니다. 수동으로 닫습니다.");
+        await popupPage.close();
+      }
 
-    // 6. "공유하기" 버튼을 찾아 클릭
-    const shareButton = await popupPage.waitForSelector('button.btn_commit', { timeout: 5000 });
-    await shareButton.click();
-    console.log('공유하기 버튼 클릭 완료');
-
-    
-  // 결과 확인을 위해 잠시 대기
-    await new Promise(resolve => setTimeout(resolve, 50000));
+      // 8. 브라우저 종료
+      await browser.close();
+    }   
   } catch (error) {
     console.error("오류 발생:", error);
-    if (browser) {
-      await browser.close();
-    }
     return {
       statusCode: 500,
       body: JSON.stringify(error),
     };
-  } finally {
-    if (browser) {      
-      await browser.close();
-    }
-  }
-
+  } 
   return {
     statusCode: 200,
     body: 'Auto share executed successfully',
