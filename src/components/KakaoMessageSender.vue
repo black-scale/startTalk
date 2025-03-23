@@ -62,7 +62,7 @@ export default {
         return;
       }
 
-    fetch("http://localhost:3000/run-selenium?userKey="+this.kakaoApiKey+"&userMessage="+this.message+"&friendName="+this.receiver)
+    fetch("https://vzpkbka3njc4tpudkwezjgqty40dsnfw.lambda-url.ap-northeast-2.on.aws?userKey="+this.kakaoApiKey+"&userMessage="+this.message+"&friendName="+this.receiver)
     .then(response => response.text())
     .then(data => console.log("Selenium 결과:", data))
     .catch(error => console.error("API 호출 오류:", error))

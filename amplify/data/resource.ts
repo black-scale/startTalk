@@ -1,4 +1,7 @@
 import { type ClientSchema, a, defineData } from "@aws-amplify/backend";
+import { saveKakaoLoginInfo } from "../functions/saveKakaoLoginInfo/resource"
+import { autoSendServer } from "../functions/autoSendServer/resource"
+
 
 /*== STEP 1 ===============================================================
 The section below creates a Todo database table with a "content" field. Try
@@ -15,17 +18,18 @@ const schema = a.schema({
       expireAt: a.integer(),        // 쿠키 중 가장 빠른 만료 시간 (Unix timestamp, 초 단위)
       createdAt: a.string()        // 저장 시각 (예: "2023-03-21T12:34:56.789Z")
     })
-    .authorization((allow) => [allow.publicApiKey()]),
+    .authorization((allow) => [allow.publicApiKey(), ]),
 
     kakaoLoginInfo: a
     .model({
       userKey: a.string(),         // 사용자 식별자 (Primary key)
       userId: a.string(),      // 쿠키 객체 배열을 JSON 문자열로 직렬화한 값
-      userPw: a.integer(),        // 쿠키 중 가장 빠른 만료 시간 (Unix timestamp, 초 단위)
+      userPw: a.string(),        // 쿠키 중 가장 빠른 만료 시간 (Unix timestamp, 초 단위)
       expireAt: a.integer(),        // 쿠키 중 가장 빠른 만료 시간 (Unix timestamp, 초 단위)
       createdAt: a.string()        // 저장 시각 (예: "2023-03-21T12:34:56.789Z")
     })
     .authorization((allow) => [allow.publicApiKey()]),
+    
     
     startTalkMessage: a
     .model({
@@ -37,7 +41,8 @@ const schema = a.schema({
       expireAt: a.string()
     })
     .authorization((allow) => [allow.publicApiKey()]),
-});
+
+}).authorization(allow => [allow.resource(autoSendServer), allow.resource(saveKakaoLoginInfo)]);
 
 export type Schema = ClientSchema<typeof schema>;
 

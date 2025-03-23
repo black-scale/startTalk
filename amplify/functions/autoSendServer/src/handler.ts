@@ -2,11 +2,16 @@ import type { APIGatewayEvent, Context, APIGatewayProxyResult } from 'aws-lambda
 import chromium from '@sparticuz/chromium';
 import puppeteer, { Browser, Page, Cookie, Target } from 'puppeteer-core';
 import { DynamoDBClient, GetItemCommand , PutItemCommand} from '@aws-sdk/client-dynamodb';
+import outputs from '../../../../amplify_outputs.json'  // 상대경로 조정
+import { generateClient } from "aws-amplify/data";
+import type { Schema } from "../../../data/resource";
+
+const client = generateClient<Schema>() 
+
 
 const requiredCookies = ['_kahai', '_karmt', '_karmtea', '_kawlt', '_kawltea'];
 
 // 환경 변수 또는 직접 설정
-const COOKIE_TABLE = process.env.COOKIE_TABLE || 'KakaoLoginCookie';
 const SEND_DEFAULT_URL = process.env.SEND_DEFAULT_URL || 'https://dev.d4gwjzbx3yq4k.amplifyapp.com/AutoSend';
 
 /**
@@ -16,17 +21,14 @@ const SEND_DEFAULT_URL = process.env.SEND_DEFAULT_URL || 'https://dev.d4gwjzbx3y
  * @returns 쿠키 배열 (Cookie[]) 또는 null (저장된 쿠키 없음)
  */
 async function getCookiesFromDynamo(userId: string): Promise<Cookie[] | null> {
-  const ddbClient = new DynamoDBClient({ region: process.env.AWS_REGION || 'us-east-1' });
-  const command = new GetItemCommand({
-    TableName: COOKIE_TABLE,
-    Key: { userId: { S: userId } },
-  });
-  const response = await ddbClient.send(command);
-  if (!response.Item || !response.Item.cookieData || !response.Item.cookieData.S) {
+  const { data: response } = await client.models.kakaoLoginCookie.get({id: userId })
+
+
+  if (!response || !response.cookieData) {
     return null;
   }
   try {
-    const cookieData: Cookie[] = JSON.parse(response.Item.cookieData.S);
+    const cookieData: Cookie[] = JSON.parse(response.cookieData);
     return cookieData;
   } catch (e) {
     console.error("쿠키 파싱 오류:", e);
@@ -35,23 +37,18 @@ async function getCookiesFromDynamo(userId: string): Promise<Cookie[] | null> {
 }
 
 async function getLoginInfoFromDynamo(userKey: string): Promise<{ userID: string; userPW: string } | null> {
-  const ddbClient = new DynamoDBClient({ region: process.env.AWS_REGION || 'us-east-1' });
-  const params = {
-    TableName: 'kakaoLoginInfo', // 사용자 자격증명을 저장하는 테이블 이름
-    Key: {
-      userKey: { S: userKey },
-    },
-  };
+
+
+  
 
   try {
-    const command = new GetItemCommand(params);
-    const response = await ddbClient.send(command);
-    if (!response.Item) {
+    const { data: response } = await client.models.kakaoLoginInfo.get({id: userKey })
+    if (!response) {
       console.error('No credentials found for userKey:', userKey);
       return null;
     }
-    const userID = response.Item.userID?.S;
-    const userPW = response.Item.userPW?.S;
+    const userID = response.userId;
+    const userPW = response.userPw;
     if (!userID || !userPW) {
       console.error('Incomplete credentials for userKey:', userKey);
       return null;
@@ -76,18 +73,15 @@ async function storeCookiesInDynamo(userKey: string, cookies: Cookie[]): Promise
   if (minExpire === null) {
     minExpire = 0;
   }
-  const ddbClient = new DynamoDBClient({ region: process.env.AWS_REGION || 'us-east-1' });
-  const params = {
-    TableName: COOKIE_TABLE,
-    Item: {
-      userKey: { S: userKey },
-      cookieData: { S: JSON.stringify(cookies) },
-      expireAt: { N: minExpire.toString() },
-      createdAt: { S: new Date().toISOString() },
-    },
-  };
-  await ddbClient.send(new PutItemCommand(params));
-  console.log(`쿠키 정보가 DynamoDB(${COOKIE_TABLE})에 저장되었습니다.`);
+  const { data: response } = await client.models.kakaoLoginCookie.create({id: userKey,
+                                                                        userKey:userKey ,
+                                                                        cookieData: JSON.stringify(cookies) ,
+                                                                        expireAt:  minExpire ,
+                                                                        createdAt:new Date().toISOString() ,
+                                                                    })
+
+  console.log(`쿠키 정보가 DynamoDB(${response})에 저장되었습니다.`);
+
 }
 /**
  * Lambda 핸들러
@@ -325,19 +319,7 @@ export const handler = async (event: APIGatewayEvent, context: Context): Promise
           }
           if (minExpire === null) minExpire = 0;
           // DynamoDB에 쿠키 전송
-          const ddbClient = new DynamoDBClient({ region: process.env.AWS_REGION || 'us-east-1' });
-          const putParams = {
-            TableName: COOKIE_TABLE,
-            Item: {
-              userKey: { S: userKey },
-              cookieData: { S: JSON.stringify(allCookies) },
-              expireAt: { N: minExpire.toString() },
-              createdAt: { S: new Date().toISOString() },
-            },
-          };
-          await ddbClient.send(new PutItemCommand(putParams));
-          console.log(`쿠키 정보가 DynamoDB(${COOKIE_TABLE})에 저장되었습니다.`);
-            
+          storeCookiesInDynamo(userKey, allCookies);           
           break;
         }
         // 1초 대기 후 다시 확인

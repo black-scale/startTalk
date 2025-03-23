@@ -1,0 +1,14 @@
+{
+  "name": "save-kakao-login-info",
+  "version": "1.0.0",
+  "main": "handler.ts",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "devDependencies": {
+    "aws-sdk": "^2.1692.0"
+  }
+}

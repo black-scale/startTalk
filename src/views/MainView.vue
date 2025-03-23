@@ -8,6 +8,10 @@
                 d="M12 8c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 10c-4.4 0-8-3.6-8-8s3.6-8 8-8 8 3.6 8 8-3.6 8-8 8zm0-14c-3.3 0-6 2.7-6 6s2.7 6 6 6 6-2.7 6-6-2.7-6-6-6z"/>
         </svg>
       </button>
+      <KakaoLoginInfoForm
+        v-if="showKakaoLoginForm"
+        @close="handleCloseKakaoForm"
+      />
     </div>
     <div class="p-4">
       <div v-if="!isInitialized" class="mb-4">
@@ -70,6 +74,8 @@
 
 <script>
 import SelectChatRoom from '../components/SelectChatRoom.vue';
+import KakaoLoginInfoForm from '../components/KakaoLoginInfoForm.vue'
+
 export default {
   components: {
     SelectChatRoom 
@@ -117,7 +123,7 @@ export default {
       }
       
       //sendDefault를 호출하여 메시지 전송 인터페이스를 엽니다.
-      fetch("https://vzpkbka3njc4tpudkwezjgqty40dsnfw.lambda-url.ap-northeast-2.on.aws/?userKey="+this.kakaoApiKey+"&userMessage=스타트톡 로그인 완료"+"&friendName=send_myself")
+      fetch("https://vzpkbka3njc4tpudkwezjgqty40dsnfw.lambda-url.ap-northeast-2.on.aws?userKey="+this.kakaoApiKey+"&userMessage=스타트톡 로그인 완료"+"&friendName=send_myself")
         .then(response => response.text())
         .then(data => console.log("Selenium 결과:", data))
         .catch(error => console.error("API 호출 오류:", error))
@@ -125,7 +131,14 @@ export default {
 
     },
     setting() {
-        alert('Settings function executed');
+      if (!this.kakaoApiKey) {
+        alert('API Key를 먼저 입력해주세요!')
+        return
+      }
+      this.showKakaoLoginForm = true
+    },
+    handleCloseKakaoForm() {
+      this.showKakaoLoginForm = false
     },
 
     openChatRoom() {
