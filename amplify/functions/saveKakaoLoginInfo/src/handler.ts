@@ -1,5 +1,5 @@
 // amplify/functions/saveKakaoLoginInfo/src/index.ts
-import { DynamoDB } from 'aws-sdk'
+
 import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../../data/resource";
 

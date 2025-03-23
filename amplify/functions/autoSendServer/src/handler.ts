@@ -1,8 +1,6 @@
 import type { APIGatewayEvent, Context, APIGatewayProxyResult } from 'aws-lambda';
 import chromium from '@sparticuz/chromium';
 import puppeteer, { Browser, Page, Cookie, Target } from 'puppeteer-core';
-import { DynamoDBClient, GetItemCommand , PutItemCommand} from '@aws-sdk/client-dynamodb';
-import outputs from '../../../../amplify_outputs.json'  // 상대경로 조정
 import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../../data/resource";
 
