@@ -87,6 +87,7 @@ export default {
       isInitialized: false,
       isPopupVisible:false,
       selectedChatRoom: null,
+      showKakaoLoginForm: false
       
     };
   },
@@ -123,14 +124,9 @@ export default {
       }
       
       //sendDefault를 호출하여 메시지 전송 인터페이스를 엽니다.
-     fetch('/functions/autoSendServer?userKey="+this.kakaoApiKey+"&userMessage=스타트톡 로그인 완료"+"&friendName=send_myself"', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        userKey: userKey.value,
-        userId: userId.value,
-        userPw: userPw.value,
-      }),
+     fetch('/functions/autoSendServer?userKey='+this.kakaoApiKey+'"&userMessage=스타트톡 로그인 완료"+"&friendName=send_myself"', {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' }
     })
     .then(response => response.text())
     .then(data => console.log("Selenium 결과:", data))
