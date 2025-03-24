@@ -72,13 +72,26 @@
 
 
 
-<script>
+<script lang="ts">
 import SelectChatRoom from '../components/SelectChatRoom.vue';
 import KakaoLoginInfoForm from '../components/KakaoLoginInfoForm.vue'
+import { generateClient } from "aws-amplify/api"
+import { type Schema } from "../../amplify/data/resource"
+import { DataStore } from '@aws-amplify/datastore';
+
+
+
+
+declare global {
+  interface Window {
+    Kakao: any;
+  }
+}
 
 export default {
   components: {
-    SelectChatRoom 
+    SelectChatRoom,
+    KakaoLoginInfoForm
   },
   data() {
     return {
@@ -96,14 +109,14 @@ export default {
       try {
         // DataStore.save()를 통해 Session 모델 인스턴스 저장
         const session = await DataStore.save(
-          new Session({
+          {
             apiKey: this.kakaoApiKey,
             createdAt: new Date().toISOString(),
-          })
+          }
         );
         console.log('세션 저장 성공:', session);
         // 생성된 세션의 고유 id를 localStorage 등에 저장
-        localStorage.setItem('sessionId', session.id);
+        localStorage.setItem('apiKey', this.kakaoApiKey);
       } catch (error) {
         console.error('세션 저장 실패:', error);
       }
@@ -124,13 +137,13 @@ export default {
       }
       
       //sendDefault를 호출하여 메시지 전송 인터페이스를 엽니다.
-     fetch('/functions/autoSendServer?userKey='+this.kakaoApiKey+'"&userMessage=스타트톡 로그인 완료"+"&friendName=send_myself"', {
-      method: 'GET',
-      headers: { 'Content-Type': 'application/json' }
-    })
-    .then(response => response.text())
-    .then(data => console.log("Selenium 결과:", data))
-    .catch(error => console.error("API 호출 오류:", error))
+      const client = generateClient<Schema>()
+      client.queries.autoSendServer({
+           userKey: this.kakaoApiKey,
+           userMessage: '스타트톡 로그인 완료',
+           friendName: 'send_myself',
+        })
+
 
 
     },

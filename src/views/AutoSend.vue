@@ -23,8 +23,8 @@ export default {
         objectType: "text",
         text: message,
         link: {
-          mobileWebUrl: "https://sju0924.github.io/",
-          webUrl: "https://sju0924.github.io/"
+          mobileWebUrl: "https://naver.com",
+          webUrl: "https://m.naver.com"
         },
         installTalk: true
       });

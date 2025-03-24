@@ -2,25 +2,25 @@
 
 import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../../../data/resource";
+import { Amplify } from "aws-amplify";
+import outputs from "../../../../amplify_outputs.json";
+
+Amplify.configure(outputs);
 
 const client = generateClient<Schema>() 
 
 
-export const handler = async (event: any) => {
-  if (event.requestContext?.http?.method === 'OPTIONS') {
+export const handler: Schema['saveKakaoLoginInfo']["functionHandler"] = async (event) =>{
+
+  const { userKey, userId, userPw } = event.arguments
+
+  if(!userKey || !userId || !userPw){
     return {
-      statusCode: 200,
-      headers: {
-        'Access-Control-Allow-Origin': 'http://localhost:5173',
-        'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type',
-      },
-      body: '',
+      statusCode: 400,
+      headers: { 'Access-Control-Allow-Origin': '*' },
+      body: JSON.stringify({ message: 'key, id, pw 정보가 없습니다. . 저장하지 않음.' }),
     }
   }
-
-  const body = JSON.parse(event.body)
-  const { userKey, userId, userPw } = body
 
   const createdAt = new Date().toISOString()
   const expireAt = Math.floor(Date.now() / 1000) + 365 * 24 * 60 * 60

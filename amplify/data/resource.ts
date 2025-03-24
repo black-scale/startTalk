@@ -41,8 +41,29 @@ const schema = a.schema({
       expireAt: a.string()
     })
     .authorization((allow) => [allow.publicApiKey()]),
+    saveKakaoLoginInfo:a 
+    .query()
+    .arguments({
+      userKey: a.string(),
+      userId: a.string(),
+      userPw: a.string(),
+    })
+    .returns(a.json())
+    .handler(a.handler.function(saveKakaoLoginInfo))
+    .authorization((allow) => [allow.publicApiKey()]),
 
-}).authorization(allow => [allow.resource(autoSendServer), allow.resource(saveKakaoLoginInfo)]);
+    autoSendServer:a 
+    .query()
+    .arguments({
+      friendName: a.string(),
+      userKey: a.string(),
+      userMessage: a.string(),
+    })
+    .returns(a.json())
+    .handler(a.handler.function(autoSendServer))
+    .authorization((allow) => [allow.publicApiKey()])
+
+});
 
 export type Schema = ClientSchema<typeof schema>;
 

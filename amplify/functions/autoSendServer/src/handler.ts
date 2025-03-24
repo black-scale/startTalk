@@ -88,14 +88,12 @@ async function storeCookiesInDynamo(userKey: string, cookies: Cookie[]): Promise
  *   - userKey: 카카오 앱 키
  *   - userMessage: 전송할 메시지
  */
-export const handler = async (event: APIGatewayEvent, context: Context): Promise<APIGatewayProxyResult> => {
+
+
+export const handler: Schema['autoSendServer']["functionHandler"] = async (event) => {
   let browser: Browser | null = null;
   try {
-    const qs = event.queryStringParameters || {};
-
-    let friendName: string = (qs.friendName as string);
-    let userKey: string = (qs.userKey as string);
-    let userMessage: string = (qs.userMessage as string);
+    const { friendName, userKey, userMessage } = event.arguments
     if (!friendName || !userKey || !userMessage) {
       return { statusCode: 400, body: 'friendName, userKey, userMessage 파라미터 필요' };
     }
@@ -117,11 +115,107 @@ export const handler = async (event: APIGatewayEvent, context: Context): Promise
     let page: Page = await browser.newPage();
     const targetUrl = `${SEND_DEFAULT_URL}?key=${encodeURIComponent(userKey)}&message=${encodeURIComponent(userMessage)}`;
     // 3. 쿠키가 저장되어 있다면, 페이지에 주입
-    if (storedCookies) {
+    if (!storedCookies) {
+        //저장된 쿠키가 없을때 로그인창 띄움움\
+        console.log("저장된 쿠키가 없으므로, non-headless 모드에서 실행하여 사용자 로그인을 유도합니다.");
   
+        // 2. 로그인 페이지로 이동 (실제 로그인 페이지 URL로 교체)
+        await page.goto(targetUrl, { waitUntil: 'networkidle2' });
+  
+        // 4. sendDefault 호출 후 공유 피커 팝업 창이 뜨기를 대기
+        const popupTarget: Target = await browser.waitForTarget((target: Target) => {
+          // 메인 페이지의 target(opener)이면 공유 피커 팝업으로 판단 (단, URL이 'data:,'가 아니어야 함)
+          return target.opener() === page.target() && target.url() !== 'data:,';
+        });
+        const popupPage: Page | null = await popupTarget.page();
+        if (!popupPage) {
+          console.error("팝업 페이지를 찾지 못했습니다.");
+          return {
+            statusCode: 500,
+            body: "팝업 페이지를 찾지 못했습니다.",
+          };
+        }
+        await popupPage.bringToFront();
+        console.log('공유 피커 팝업 창 전환 완료');
+  
+        // 3. DynamoDB에서 사용자 자격증명 조회
+        const credentials = await getLoginInfoFromDynamo(userKey);
+        if (!credentials) {
+          console.error('자격증명을 가져오지 못했습니다.');
+          return {
+            statusCode: 403,
+            body: JSON.stringify('자격증명을 가져오지 못했습니다.'),
+          };
+        }
+        const _id = credentials.userID;
+        const _pw = credentials.userPW;
+        console.log(`조회된 자격증명: ID=${_id}, PW=${_pw}`);
+  
+        await popupPage.type('#loginId--1', _id, { delay: 50 });
+        await popupPage.type('#password--2', _pw, { delay: 50 });
+  
+        // 4. "간편로그인 정보 저장" 체크박스를 체크하고 값 변경
+        await popupPage.evaluate(() => {
+          const checkbox = document.getElementById('saveSignedIn--4') as HTMLInputElement;
+          if (checkbox) {
+            checkbox.checked = true;
+            checkbox.value = 'true';
+          }
+        });
+  
+        // 5. 로그인 버튼 클릭
+        await popupPage.click('button.btn_g.highlight.submit');
+  
+        // 6. 로그인 후 페이지 전환을 기다림
+        await popupPage.waitForNavigation({ waitUntil: 'networkidle2' });
+        console.log('로그인 및 페이지 전환 완료');
+  
+        // 7. 5분(300,000ms) 대기
+        // 5분(300,000ms) 동안 팝업 창이 닫히는지 주기적으로 확인
+        const maxWaitTime = 300000; // 5분
+        const checkInterval = 1000; // 1초마다 확인
+        const startTime = Date.now();
+        let popupClosed = false;
+  
+        while (Date.now() - startTime < maxWaitTime) {
+          if (popupPage.isClosed()) {
+            popupClosed = true;
+            // 6. 팝업 페이지가 닫히는 것을 감지 (close 이벤트)
+            // 팝업 페이지가 닫히면, 브라우저 컨텍스트에서 쿠키를 가져와 DynamoDB에 전송
+            console.log('팝업 페이지가 닫혔습니다. 쿠키 정보를 DynamoDB에 전송합니다.');
+            // 브라우저의 기본 컨텍스트에서 쿠키를 가져옵니다.
+            const allCookies: Cookie[] = await browser!.defaultBrowserContext().cookies();
+            // DynamoDB에 저장할 때, 필요한 쿠키 데이터만 필터링할 수 있습니다.
+            // 여기서는 전체 쿠키를 JSON 문자열로 저장합니다.
+            // expireAt은 필수 쿠키 중 가장 빠른 만료 시간을 계산합니다.
+            let minExpire: number | null = null;
+            for (const cookie of allCookies) {
+              if (requiredCookies.includes(cookie.name) && cookie.expires && cookie.expires > 0) {
+                if (minExpire === null || cookie.expires < minExpire) {
+                  minExpire = cookie.expires;
+                }
+              }
+            }
+            if (minExpire === null) minExpire = 0;
+            // DynamoDB에 쿠키 전송
+            storeCookiesInDynamo(userKey, allCookies);           
+            break;
+          }
+          // 1초 대기 후 다시 확인
+          await new Promise(resolve => setTimeout(resolve, checkInterval));
+        }
+  
+        if (!popupClosed) {
+          console.log("5분 후에도 팝업 창이 열려있습니다. 수동으로 닫습니다.");
+          await popupPage.close();
+        }
+      }
+      else{              
+        await browser.setCookie(...storedCookies);
+        console.log("쿠키를 브라우저에 주입했습니다.");
+      }   
       
-      await browser.setCookie(...storedCookies);
-      console.log("쿠키를 브라우저에 주입했습니다.");
+
 
       // 4. sendDefault 전용 페이지로 이동 (userKey, userMessage 전달)
       
@@ -230,114 +324,18 @@ export const handler = async (event: APIGatewayEvent, context: Context): Promise
 
       
       // 결과 확인을 위해 잠시 대기
-      await new Promise(resolve => setTimeout(resolve, 500));
-    
-    } else {
-
-      //저장된 쿠키가 없을때 로그인창 띄움움\
-      console.log("저장된 쿠키가 없으므로, non-headless 모드에서 실행하여 사용자 로그인을 유도합니다.");
-      friendName = "send_myself";
-
-      // 2. 로그인 페이지로 이동 (실제 로그인 페이지 URL로 교체)
-      await page.goto(targetUrl, { waitUntil: 'networkidle2' });
-
-      // 4. sendDefault 호출 후 공유 피커 팝업 창이 뜨기를 대기
-      const popupTarget: Target = await browser.waitForTarget((target: Target) => {
-        // 메인 페이지의 target(opener)이면 공유 피커 팝업으로 판단 (단, URL이 'data:,'가 아니어야 함)
-        return target.opener() === page.target() && target.url() !== 'data:,';
-      });
-      const popupPage: Page | null = await popupTarget.page();
-      if (!popupPage) {
-        console.error("팝업 페이지를 찾지 못했습니다.");
-        return {
-          statusCode: 500,
-          body: "팝업 페이지를 찾지 못했습니다.",
-        };
-      }
-      await popupPage.bringToFront();
-      console.log('공유 피커 팝업 창 전환 완료');
-
-      // 3. DynamoDB에서 사용자 자격증명 조회
-      const credentials = await getLoginInfoFromDynamo(userKey);
-      if (!credentials) {
-        console.error('자격증명을 가져오지 못했습니다.');
-        return {
-          statusCode: 403,
-          body: JSON.stringify('자격증명을 가져오지 못했습니다.'),
-        };
-      }
-      const _id = credentials.userID;
-      const _pw = credentials.userPW;
-      console.log(`조회된 자격증명: ID=${_id}, PW=${_pw}`);
-
-      await popupPage.type('#loginId--1', _id, { delay: 50 });
-      await popupPage.type('#password--2', _pw, { delay: 50 });
-
-      // 4. "간편로그인 정보 저장" 체크박스를 체크하고 값 변경
-      await popupPage.evaluate(() => {
-        const checkbox = document.getElementById('saveSignedIn--4') as HTMLInputElement;
-        if (checkbox) {
-          checkbox.checked = true;
-          checkbox.value = 'true';
-        }
-      });
-
-      // 5. 로그인 버튼 클릭
-      await popupPage.click('button.btn_g.highlight.submit');
-
-      // 6. 로그인 후 페이지 전환을 기다림
-      await popupPage.waitForNavigation({ waitUntil: 'networkidle2' });
-      console.log('로그인 및 페이지 전환 완료');
-
-      // 7. 5분(300,000ms) 대기
-      // 5분(300,000ms) 동안 팝업 창이 닫히는지 주기적으로 확인
-      const maxWaitTime = 300000; // 5분
-      const checkInterval = 1000; // 1초마다 확인
-      const startTime = Date.now();
-      let popupClosed = false;
-
-      while (Date.now() - startTime < maxWaitTime) {
-        if (popupPage.isClosed()) {
-          popupClosed = true;
-          // 6. 팝업 페이지가 닫히는 것을 감지 (close 이벤트)
-          // 팝업 페이지가 닫히면, 브라우저 컨텍스트에서 쿠키를 가져와 DynamoDB에 전송
-          console.log('팝업 페이지가 닫혔습니다. 쿠키 정보를 DynamoDB에 전송합니다.');
-          // 브라우저의 기본 컨텍스트에서 쿠키를 가져옵니다.
-          const allCookies: Cookie[] = await browser!.defaultBrowserContext().cookies();
-          // DynamoDB에 저장할 때, 필요한 쿠키 데이터만 필터링할 수 있습니다.
-          // 여기서는 전체 쿠키를 JSON 문자열로 저장합니다.
-          // expireAt은 필수 쿠키 중 가장 빠른 만료 시간을 계산합니다.
-          let minExpire: number | null = null;
-          for (const cookie of allCookies) {
-            if (requiredCookies.includes(cookie.name) && cookie.expires && cookie.expires > 0) {
-              if (minExpire === null || cookie.expires < minExpire) {
-                minExpire = cookie.expires;
-              }
-            }
-          }
-          if (minExpire === null) minExpire = 0;
-          // DynamoDB에 쿠키 전송
-          storeCookiesInDynamo(userKey, allCookies);           
-          break;
-        }
-        // 1초 대기 후 다시 확인
-        await new Promise(resolve => setTimeout(resolve, checkInterval));
-      }
-
-      if (!popupClosed) {
-        console.log("5분 후에도 팝업 창이 열려있습니다. 수동으로 닫습니다.");
-        await popupPage.close();
-      }
-
+      await new Promise(resolve => setTimeout(resolve, 500));    
+      
+  
       // 8. 브라우저 종료
       await browser.close();
-    }   
-  } catch (error) {
-    console.error("오류 발생:", error);
-    return {
-      statusCode: 500,
-      body: JSON.stringify(error),
-    };
+    } 
+    catch (error) {
+      console.error("오류 발생:", error);
+      return {
+        statusCode: 500,
+        body: JSON.stringify(error),
+      };
   } 
   return {
     statusCode: 200,
