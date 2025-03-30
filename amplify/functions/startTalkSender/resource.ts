@@ -1,5 +1,5 @@
 import { defineFunction } from '@aws-amplify/backend';
-import outputs from "../../../amplify_outputs.json";
+import outputs from "@/amplify_outputs.json";
 
 export const startTalkSender = defineFunction({
   // optionally specify a name for the Function (defaults to directory name)
