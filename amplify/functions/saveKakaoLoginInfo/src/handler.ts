@@ -42,7 +42,8 @@ export const handler: Schema['saveKakaoLoginInfo']["functionHandler"] = async (e
         }
       } else {
         // ⚠️ key는 같지만 id/pw가 다르면 업데이트
-        const { data: existing } = await client.models.kakaoLoginInfo.update({id: userKey, userId, userPw})
+        
+        const { data: existing } = await client.models.kakaoLoginInfo.update({id: userKey, userKey, userId, userPw})
 
         return {
           statusCode: 200,
@@ -54,7 +55,7 @@ export const handler: Schema['saveKakaoLoginInfo']["functionHandler"] = async (e
       }
     } else {
       // 신규 항목 저장
-      const { data: create } = await client.models.kakaoLoginInfo.create({id: userKey, userId, userPw,createdAt,expireAt})
+      const { data: create } = await client.models.kakaoLoginInfo.create({id: userKey, userKey, userId, userPw,createdAt,expireAt})
 
 
       return {

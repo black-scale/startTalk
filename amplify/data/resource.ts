@@ -1,4 +1,4 @@
-import { type ClientSchema, a, defineData } from "@aws-amplify/backend";
+import { type ClientSchema, a, defineData,   } from "@aws-amplify/backend";
 import { saveKakaoLoginInfo } from "../functions/saveKakaoLoginInfo/resource"
 import { autoSendServer } from "../functions/autoSendServer/resource"
 
@@ -38,9 +38,15 @@ const schema = a.schema({
       room: a.string(),   
       
       createdAt: a.string(),    // 세션 생성 시각
-      expireAt: a.string()
+      expireAt: a.string(),
+      updatedAt: a.datetime()
+      
     })
-    .authorization((allow) => [allow.publicApiKey()]),
+    .authorization((allow) => [allow.publicApiKey()])
+  
+    
+    
+    ,
     saveKakaoLoginInfo:a 
     .query()
     .arguments({
@@ -61,11 +67,15 @@ const schema = a.schema({
     })
     .returns(a.json())
     .handler(a.handler.function(autoSendServer))
-    .authorization((allow) => [allow.publicApiKey()])
+    .authorization((allow) => [allow.publicApiKey()]),
 
-});
+      
+
+})
+;
 
 export type Schema = ClientSchema<typeof schema>;
+
 
 export const data = defineData({
   schema,
