@@ -10,7 +10,7 @@ export const autoSendServer = defineFunction({
     API_ENDPOINT: process.env.API_ENDPOINT || "null",
     API_KEY: secret('API_KEY') || process.env.API_KEY,
     AMPLIFY_DATA_DEFAULT_NAME: process.env.AMPLIFY_DATA_DEFAULT_NAME || 'amplifyData',
-    SEND_DEFAULT_URL: process.env.AMPLIFY_DATA_DEFAULT_NAME 
+    SEND_DEFAULT_URL: process.env.SEND_DEFAULT_URL  || 'localhost:5173/AutoSend'
   },
   layers: {
     "chromium":
