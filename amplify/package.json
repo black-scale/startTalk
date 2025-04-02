@@ -3,4 +3,5 @@
   "dependencies": {
     "@aws-amplify/backend": "^1.14.3"
   }
+  
 }
