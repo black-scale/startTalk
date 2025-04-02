@@ -15,7 +15,7 @@ const client = generateClient<Schema>()
 const requiredCookies = ['_kahai', '_karmt', '_karmtea', '_kawlt', '_kawltea'];
 
 // 환경 변수 또는 직접 설정
-const SEND_DEFAULT_URL = process.env.SEND_DEFAULT_URL || 'https://localhost/AutoSend';
+const SEND_DEFAULT_URL = process.env.SEND_DEFAULT_URL || 'https://localhost:5173/AutoSend';
 
 /**
  * DynamoDB에서 특정 사용자(userId)의 쿠키 정보를 조회하는 함수.
