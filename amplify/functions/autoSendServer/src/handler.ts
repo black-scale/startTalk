@@ -1,19 +1,21 @@
 import chromium from '@sparticuz/chromium';
 import puppeteer, { Browser, Page, Cookie, Target } from 'puppeteer-core';
+import { Amplify } from 'aws-amplify';
 import { generateClient } from "aws-amplify/data";
-import type { Schema } from "@/amplify/data/resource";
-import { Amplify } from "aws-amplify";
+import { getAmplifyDataClientConfig } from '@aws-amplify/backend/function/runtime';
+import { env } from '$amplify/env/auto-send-server'; // replace with your function name
+import type { Schema } from "../../../data/resource";
 
-import outputs from "@/amplify_outputs.json";
+const { resourceConfig, libraryOptions } = await getAmplifyDataClientConfig(env);
 
-Amplify.configure(outputs);
+Amplify.configure(resourceConfig, libraryOptions);
 const client = generateClient<Schema>() 
 
 
 const requiredCookies = ['_kahai', '_karmt', '_karmtea', '_kawlt', '_kawltea'];
 
 // 환경 변수 또는 직접 설정
-const SEND_DEFAULT_URL = process.env.SEND_DEFAULT_URL || 'https://dev.d4gwjzbx3yq4k.amplifyapp.com/AutoSend';
+const SEND_DEFAULT_URL = process.env.SEND_DEFAULT_URL || 'https://localhost/AutoSend';
 
 /**
  * DynamoDB에서 특정 사용자(userId)의 쿠키 정보를 조회하는 함수.
@@ -111,7 +113,7 @@ export const handler: Schema['autoSendServer']["functionHandler"] = async (event
     const browser = await puppeteer.launch({
       args: chromium.args,
       defaultViewport: chromium.defaultViewport,
-      executablePath: await chromium.executablePath(),
+      executablePath: await chromium.executablePath("/opt/nodejs/node_modules/@sparticuz/chromium/bin"),
       headless: chromium.headless,
     });
 

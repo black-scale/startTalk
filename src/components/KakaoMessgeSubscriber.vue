@@ -24,8 +24,13 @@ export default {
   mounted() {
     this.subscription = client.models.startTalkMessage.onCreate().subscribe({
       next: ( data ) => {
-        console.log('새 메시지 수신:', data);
-        this.messages = [data];
+          // result가 null이 아닌지 먼저 확인
+        if (!data) return;
+        
+        // result의 데이터에서 updatedAt 필드를 제외합니다.
+        const { updatedAt, ...filteredData } = data;
+        console.log('새 메시지 수신:', filteredData);
+        this.messages = [filteredData];
       },
       error: (error) => console.warn('Subscription error:', error)
     });

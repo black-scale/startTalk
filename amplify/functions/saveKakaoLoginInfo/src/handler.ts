@@ -1,12 +1,15 @@
 // amplify/functions/saveKakaoLoginInfo/src/index.ts
 
-import { generateClient } from "aws-amplify/data";
-import type { Schema } from  "@/amplify/data/resource";
+import type { Schema } from "../../../data/resource";
 import { Amplify } from "aws-amplify";
-import outputs from "@/amplify_outputs.json";
+import { generateClient } from "aws-amplify/data";
+import { getAmplifyDataClientConfig } from '@aws-amplify/backend/function/runtime';
+import { env } from '$amplify/env/save-kakao-login-info'; // replace with your function name
 
-Amplify.configure(outputs);
 
+const { resourceConfig, libraryOptions } = await getAmplifyDataClientConfig(env);
+
+Amplify.configure(resourceConfig, libraryOptions);
 const client = generateClient<Schema>() 
 
 

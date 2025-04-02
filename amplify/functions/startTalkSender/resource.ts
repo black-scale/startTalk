@@ -1,15 +1,14 @@
-import { defineFunction } from '@aws-amplify/backend';
-import outputs from "@/amplify_outputs.json";
+import { defineFunction, secret } from '@aws-amplify/backend';
 
 export const startTalkSender = defineFunction({
   // optionally specify a name for the Function (defaults to directory name)
-  name: 'startTalkSender',
+  name: 'starttalk-sender',
   // optionally specify a path to your handler (defaults to "./handler.ts")
   entry: './src/handler.js',
   resourceGroupName: "data",
   environment: {
-    APPSYNC_ENDPOINT: outputs.data.url,
-    APPSYNC_API_KEY:outputs.data.api_key,
+    API_ENDPOINT: process.env.API_ENDPOINT || "null",
+    API_KEY: secret('API_KEY') || process.env.API_KEY
   },
   
 });

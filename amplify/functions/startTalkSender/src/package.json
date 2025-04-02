@@ -9,7 +9,11 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "https": "^1.0.0"
+    "@aws-sdk/protocol-http": "^3.370.0",
+    "@aws-sdk/signature-v4": "^3.370.0",
+    "@aws-sdk/types": "^3.775.0",
+    "https": "^1.0.0",
+    "node-fetch": "^3.3.2"
   },
   "devDependencies": {
     "@types/aws-lambda": "^8.10.148"
