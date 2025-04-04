@@ -32,8 +32,16 @@
   </div>
 </template>
 
-<script>
+<script lang="ts">
+
+import { generateClient } from "aws-amplify/api"
+import { type Schema } from "../../amplify/data/resource"
+import { DataStore } from '@aws-amplify/datastore';
+
+const client = generateClient<Schema>()
+
 export default {
+  
   data() {
     return {
       kakaoApiKey: "",
@@ -61,11 +69,12 @@ export default {
         alert("Please enter a message to send.");
         return;
       }
-
-    fetch("https://vzpkbka3njc4tpudkwezjgqty40dsnfw.lambda-url.ap-northeast-2.on.aws?userKey="+this.kakaoApiKey+"&userMessage="+this.message+"&friendName="+this.receiver)
-    .then(response => response.text())
-    .then(data => console.log("Selenium 결과:", data))
-    .catch(error => console.error("API 호출 오류:", error))
+     
+      client.queries.autoSendServer({
+          userKey: this.kakaoApiKey,
+          userMessage: this.message,
+          friendName: this.receiver,
+      })
 
     }
   }

@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@aws-amplify/datastore": "^5.0.77",
+    "@dotenvx/dotenvx": "^1.39.0",
     "@parcel/watcher": "^2.5.1",
     "@types/puppeteer": "^5.4.7",
     "amplify": "^0.0.11",
