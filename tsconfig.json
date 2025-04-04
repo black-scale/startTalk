@@ -11,7 +11,10 @@
     "src/**/*.vue"
   ],
   "compilerOptions": {
+    
+    "target": "ES2022",
     "noEmit": true, 
+    "moduleResolution": "node",
     "resolveJsonModule": true,
     "esModuleInterop": true ,
     "allowJs": true,

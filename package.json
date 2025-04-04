@@ -27,6 +27,7 @@
     "@aws-amplify/backend": "^1.5.0",
     "@aws-amplify/backend-cli": "^1.4.11",
     "@tsconfig/node20": "^20.1.4",
+    "@types/cookie": "^0.6.0",
     "@types/node": "^20.12.5",
     "@vitejs/plugin-vue": "^5.0.4",
     "@vue/tsconfig": "^0.5.1",
