@@ -9,6 +9,7 @@ backend:
         - echo "API_ENDPOINT=$API_ENDPOINT" >> .env
         - echo "AUTHORIZATION_TYPE=$AUTHORIZATION_TYPE" >> .env
         - echo "SEND_DEFAULT_URL=$SEND_DEFAULT_URL" >> .env
+        - cat .env
         - npm ci --cache .npm --prefer-offline
         - cd amplify/functions/autoSendServer/src && npm ci && cd -
         - npx ampx pipeline-deploy --branch $AWS_BRANCH --app-id $AWS_APP_ID
