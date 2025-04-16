@@ -77,10 +77,8 @@ import SelectChatRoom from '../components/SelectChatRoom.vue';
 import KakaoLoginInfoForm from '../components/KakaoLoginInfoForm.vue'
 import { generateClient } from "aws-amplify/api"
 import { type Schema } from "../../amplify/data/resource"
-import { DataStore } from '@aws-amplify/datastore';
-
-
-
+import { mapActions, mapGetters } from 'vuex'
+import { defineComponent, ref } from 'vue'
 
 declare global {
   interface Window {
@@ -88,14 +86,15 @@ declare global {
   }
 }
 
-export default {
+
+export default defineComponent({
   components: {
     SelectChatRoom,
     KakaoLoginInfoForm
-  },
+  },  
   data() {
     return {
-      kakaoApiKey: "",
+      kakaoApiKey: "" ,
       message: "",
       isInitialized: false,
       isPopupVisible:false,
@@ -104,24 +103,29 @@ export default {
       
     };
   },
-  methods: {
-    async saveSession() {
-      try {
-        // DataStore.save()를 통해 Session 모델 인스턴스 저장
-        const session = await DataStore.save(
-          {
-            apiKey: this.kakaoApiKey,
-            createdAt: new Date().toISOString(),
-          }
-        );
-        console.log('세션 저장 성공:', session);
-        // 생성된 세션의 고유 id를 localStorage 등에 저장
-        localStorage.setItem('apiKey', this.kakaoApiKey);
-      } catch (error) {
-        console.error('세션 저장 실패:', error);
+  computed:{
+    ...mapGetters(['getKey'])
+  },
+  created() {
+    // 컴포넌트 생성 시점에 getter로 가져온 값을 localKey에 할당
+    this.kakaoApiKey = this.getKey || ''
+    console.log(this.kakaoApiKey)
+    if (!this.isInitialized && this.kakaoApiKey != "") {
+        window.Kakao.init(this.kakaoApiKey);
+        this.isInitialized = true;
       }
+    if(this.isInitialized && this.kakaoApiKey == ""){
+      this.isInitialized = false;
+    }
+    
+  },
+  methods: {
+    ...mapActions(['updateKey']),
+    setKakaoKey() {
+      this.updateKey(this.kakaoApiKey)
     },
     kakaoInitialize() {
+      
       if (!this.kakaoApiKey) {
         alert("Please enter a Kakao API key.");
         return;
@@ -131,7 +135,7 @@ export default {
         return;
       }
       // 초기화되지 않은 경우에만 API 키로 초기화합니다.
-      if (!this.isInitialized) {
+      if (!this.isInitialized && this.kakaoApiKey != "") {
         window.Kakao.init(this.kakaoApiKey);
         this.isInitialized = true;
       }
@@ -144,6 +148,7 @@ export default {
            friendName: 'send_myself',
         })
 
+      this.setKakaoKey(this.kakaoApiKey);
 
 
     },
@@ -175,5 +180,5 @@ export default {
       
     }
   }
-};
+});
 </script>

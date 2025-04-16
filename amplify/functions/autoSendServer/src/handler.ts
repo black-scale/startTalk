@@ -100,6 +100,45 @@ async function storeCookiesInDynamo(userKey: string, cookies: Cookie[]): Promise
   }
 }
 
+  // DynamoDB에 저장할 때, 필요한 쿠키 데이터만 필터링할 수 있습니다.
+  // 여기서는 전체 쿠키를 JSON 문자열로 저장합니다.
+  // expireAt은 필수 쿠키 중 가장 빠른 만료 시간을 계산합니다
+  async function updateCookiesInDynamo(userKey: string, cookies: Cookie[]): Promise<void> {
+    // 필수 쿠키의 expire 값 중 가장 작은 값을 계산 (만료 시간이 있는 쿠키만)
+    let minExpire: number | null = null;
+    for (const cookie of cookies) {
+      if (requiredCookies.includes(cookie.name) && cookie.expires && cookie.expires > 0) {
+        if (minExpire === null || cookie.expires < minExpire) {
+          minExpire = cookie.expires;
+        }
+      }
+    }
+    if (minExpire === null) {
+      minExpire = 0;
+    }   
+  
+    console.log("stored cookie: ", {id: userKey,
+      userKey:userKey ,
+      cookieData: JSON.stringify(cookies) ,
+      expireAt:  Math.floor(minExpire) ,
+      createdAt:new Date().toISOString() ,
+  })
+  
+    try{
+      const { data: response } = await client.models.kakaoLoginCookie.update({id: userKey,
+        userKey:userKey ,
+        cookieData: JSON.stringify(cookies) ,
+        expireAt: Math.floor(minExpire) ,
+        createdAt:new Date().toISOString() ,
+    })
+  
+    console.log(`쿠키 정보가 DynamoDB(${response?.cookieData})에 수정되었습니다.`);
+  
+  
+    } catch (error) {
+      console.error('DynamoDB 쓰기 오류:', error);
+    }
+  }
 
 /**
  * Lambda 핸들러
@@ -120,7 +159,6 @@ export const handler: Schema['autoSendServer']["functionHandler"] = async (event
 
     // 1. DynamoDB에서 쿠키 정보 조회
     const storedCookies = await getCookiesFromDynamo(userKey);
-    const headlessMode = storedCookies ? true : false;
     console.log(`쿠키 존재 여부: ${storedCookies ? '있음' : '없음'}`);
 
     // 2. Puppeteer 실행
@@ -338,14 +376,113 @@ export const handler: Schema['autoSendServer']["functionHandler"] = async (event
             body: "팝업 페이지를 찾지 못했습니다.",
           };
         }
-        const content = await popupPage.content();
+        let content = await popupPage.content();
         console.log("팝업 페이지 내용:", content);
         await popupPage.bringToFront();
         console.log('공유 피커 팝업 창 전환 완료');
 
         // 5. (여기서 sendDefault 호출 후 자동화 작업을 추가할 수 있음)
         const friendListSelector = 'div.unit_chat';
-        await popupPage.waitForSelector('div.unit_chat', { timeout: 1000 });
+        try {
+          await popupPage.waitForSelector('div.unit_chat', { timeout: 1000 });
+          console.log('div.unit_chat 요소를 찾았습니다.');
+          // 요소를 찾은 경우 실행할 작업
+        } catch (error) {
+           // 3. DynamoDB에서 사용자 자격증명 조회
+
+          let loginButton = await popupPage.$$('#saveSignedIn--4');
+          let loginEasyExists = await popupPage.$('.login_easy')
+          
+          // 만약 계정 선택 창이 뜰 경우
+          if (loginEasyExists) {
+
+            let content1_1 = await popupPage.content();
+            console.log('계정 선택을 위한한 페이지로 전환 완료' , popupPage.url());
+            console.log("팝업 페이지 내용2:", content1_1);
+            await page.evaluate(() => {
+              const firstAccount = document.querySelector('.list_easy li .wrap_profile');
+              if (firstAccount instanceof HTMLElement) {
+                firstAccount.click();
+              }
+            });          
+          }
+           //2차 인증증일때때
+          else if(loginButton.length === 0){ 
+              
+              let content1 = await popupPage.content();
+              console.log('2차 인증을 위한 페이지로 전환 완료' , popupPage.url());
+              console.log("팝업 페이지 내용2:", content1);
+           }
+           //로그인부터 다시 시작하는 창이 뜰때때
+           else{           
+            let content1 = await popupPage.content();
+            console.log('로그인을 위한 페이지로 전환 완료' , popupPage.url());
+            console.log("팝업 페이지 내용2:", content1);
+            const credentials = await getLoginInfoFromDynamo(userKey);
+            if (!credentials) {
+              console.error('자격증명을 가져오지 못했습니다.');
+              return {
+                statusCode: 403,
+                body: JSON.stringify('자격증명을 가져오지 못했습니다.'),
+              };
+            }
+            const _id = credentials.userID;
+            const _pw = credentials.userPW;
+            console.log(`조회된 자격증명: ID=${_id}, PW=${_pw}`);
+
+            
+            try{
+              await popupPage.type('#loginId--1', _id, { delay: 50 });
+              await popupPage.type('#password--2', _pw, { delay: 50 });
+              
+        
+              // 4. "간편로그인 정보 저장" 체크박스를 체크하고 값 변경
+              await popupPage.click('#saveSignedIn--4', { delay: 10 });
+
+        
+              // 5. 로그인 버튼 클릭
+              await popupPage.click('button.btn_g.highlight.submit');
+            }
+            catch(e){
+              console.log("no login element error: ",e )
+            }
+    
+           }
+
+          // 6. 로그인 후 페이지 전환 또는 에러 메시지 감지를 기다림
+          // const navigationPromise = popupPage.waitForNavigation({ waitUntil: 'networkidle2', timeout: 1500 }).then(() => 'navigated');
+          await popupPage.waitForNavigation({ waitUntil: 'networkidle2', timeout: 300000 });   
+          let submitElements = await popupPage.$$('p.desc_error');
+
+            // 아이디/비밀번호 틀렸을경우
+        if (!submitElements) {
+          // 에러 메시지가 감지된 경우, 에러 텍스트를 추출하여 로그와 응답으로 반환합니다.
+          const errorElement = await popupPage.$('p.desc_error');
+          const errorText = await popupPage.evaluate((el:any)=> el.innerText, errorElement);
+          console.error('로그인 실패: ' + errorText);
+          await browser.close();
+          return {
+            statusCode: 403,
+            body: JSON.stringify('로그인 실패: ' + errorText)
+          };
+        }
+        
+          
+          console.log('로그인 및 2차 인증 페이지 전환 완료' , popupPage.url());
+          let content2 = await popupPage.content();
+          console.log("팝업 페이지 내용2:", content2);
+          console.log('로그인 완료' , popupPage.url());
+          // 브라우저의 기본 컨텍스트에서 쿠키를 가져옵니다.
+          
+          const allCookies: Cookie[] = await browser!.defaultBrowserContext().cookies();
+          const content = await popupPage.content();
+          console.log("페이지 내용:", content);
+          // DynamoDB에 쿠키 전송
+          updateCookiesInDynamo(userKey, allCookies);     
+          // 타임아웃 등 에러가 발생한 경우 실행할 대체 작업
+        }
+
+        await popupPage.waitForSelector('div.unit_chat', { timeout: 1200 });
         let friendList = await popupPage.$$(friendListSelector);
         if (friendList.length === 0) {
           console.error("친구 목록을 로드하지 못했습니다. 로그인 상태를 확인하세요.");
