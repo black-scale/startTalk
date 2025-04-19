@@ -235,7 +235,7 @@ export const handler: Schema['autoSendServer']["functionHandler"] = async (event
           await browser.close();
           return {
             statusCode: 403,
-            body: JSON.stringify('로그인 실패: ' + errorText)
+            body: JSON.stringify('로그인 실패')
           };
         }
         
@@ -264,7 +264,7 @@ export const handler: Schema['autoSendServer']["functionHandler"] = async (event
             console.error("친구 목록을 로드하지 못했습니다. 로그인 상태를 확인하세요.");
             return {
               statusCode: 500,
-              body: "친구 목록을 로드하지 못했습니다. 로그인 상태를 확인하세요.",
+              body: "친구 목록 로드 실패",
             };
           }
           console.log('친구 목록 로드 완료');
@@ -328,8 +328,8 @@ export const handler: Schema['autoSendServer']["functionHandler"] = async (event
           if (!friendFound) {
             console.error(`"${friendName}"를 찾지 못했습니다.`);
             return {
-              statusCode: 500,
-              body: `"${friendName}"를 찾지 못했습니다.`,
+              statusCode: 404,
+              body: "수신자 검색 실패",
             };
           }
     
@@ -545,8 +545,8 @@ export const handler: Schema['autoSendServer']["functionHandler"] = async (event
         if (!friendFound) {
           console.error(`"${friendName}"를 찾지 못했습니다.`);
           return {
-            statusCode: 500,
-            body: `"${friendName}"를 찾지 못했습니다.`,
+            statusCode: 404,
+            body: "수신자 검색 실패",
           };
         }
   
