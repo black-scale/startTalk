@@ -52,6 +52,7 @@ export default defineComponent({
 
     const submitEntry = () => {
       const entry: KeywordEntry = {
+        room: store.state.selectedRoom,
         keyword: keyword.value,
         receiver: receiver.value,
         set_time: setTime. value,

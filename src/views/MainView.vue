@@ -104,7 +104,8 @@ export default defineComponent({
     };
   },
   computed:{
-    ...mapGetters(['getKey'])
+    ...mapGetters(['getKey']),
+
   },
   created() {
     // 컴포넌트 생성 시점에 getter로 가져온 값을 localKey에 할당

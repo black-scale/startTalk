@@ -7,6 +7,7 @@ export interface TimeItem {
 }
 
 export interface KeywordEntry {
+  room: string,
   keyword: string
   set_time: TimeItem[]
   receiver: string

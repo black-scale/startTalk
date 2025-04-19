@@ -1,30 +1,46 @@
 // /frontend/src/store/index.ts
 import { createStore } from 'vuex'
 import keywordModelModule from './modules/keywordModule'
+import messageModelModule from './modules/messageModule'
 import createPersistedState from 'vuex-persistedstate'
 
 export default createStore({
   // 전역 상태: persistedKey를 저장할 key 값
   state: {
-    devKey: ''
+    devKey: '',
+    selectedRegion:'',
+    selectedRoom:'',
   },
   mutations: {
     setKey(state, newKey: string) {
       state.devKey = newKey
+    },
+    setRoom(state, payload: {newRoom:string, newRegion:string}){
+      state.selectedRegion = payload.newRegion;
+      state.selectedRoom = payload.newRoom;
     }
   },
   getters: {
     // persistedKey 값을 반환하는 getter
-    getKey: (state) => state.devKey
+    getKey: (state) => state.devKey,
+    getRoom: (state) => {
+      return {
+        region: state.selectedRegion,
+        room: state.selectedRoom
+      }
+    }
   },
   actions: {
     updateKey({ commit }, newKey: string) {
       commit('setKey', newKey)
+    },
+    updateRoom({commit}, options:{newRoom:string, newRegion:string}){
+      commit('setRoom', options)
     }
   },
   modules: {
-    // keywordModel 모듈도 함께 사용
-    keywordModel: keywordModelModule
+    keywordModel: keywordModelModule,
+    messageModel: messageModelModule
   },
   plugins: [
     // keywordModel 모듈 상태를 별도의 localStorage 키에 저장
@@ -36,6 +52,11 @@ export default createStore({
     createPersistedState({
       key: 'devKey',
       paths: ['devKey']
+    }),
+    createPersistedState({
+      key: 'chatRoom',
+      paths: ['selectedRegion','selectedRoom']
     })
+    
   ]
 })
