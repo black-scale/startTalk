@@ -5,7 +5,6 @@ export const autoSendServer = defineFunction({
   name: 'auto-send-server',
   // optionally specify a path to your handler (defaults to "./handler.ts")
   entry: './src/handler.ts',
-  resourceGroupName: "data",
   environment: {
     API_ENDPOINT: process.env.API_ENDPOINT || "null",
     API_KEY: secret('API_KEY') || process.env.API_KEY,
