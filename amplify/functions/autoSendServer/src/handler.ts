@@ -381,8 +381,9 @@ export const handler: Schema['autoSendServer']["functionHandler"] = async (event
         await popupPage.bringToFront();
         console.log('공유 피커 팝업 창 전환 완료');
 
-        // 5. (여기서 sendDefault 호출 후 자동화 작업을 추가할 수 있음)      
-        let friendListSelector = await popupPage.$$('div.unit_chat');
+        // 5. (여기서 sendDefault 호출 후 자동화 작업을 추가할 수 있음)     
+        const friendDiv = 'div.unit_chat' 
+        let friendListSelector = await popupPage.$$(friendDiv);
         let loginButton = await popupPage.$$('#saveSignedIn--4');
         let loginEasyExists = await popupPage.$('.login_easy');
         
@@ -476,8 +477,7 @@ export const handler: Schema['autoSendServer']["functionHandler"] = async (event
         
 
         await popupPage.waitForSelector('div.unit_chat', { timeout: 1200 });
-        let friendList = await popupPage.$$(friendListSelector);
-        if (friendList.length === 0) {
+        if (friendListSelector.length === 0) {
           console.error("친구 목록을 로드하지 못했습니다. 로그인 상태를 확인하세요.");
           return {
             statusCode: 500,
@@ -487,13 +487,13 @@ export const handler: Schema['autoSendServer']["functionHandler"] = async (event
         console.log('친구 목록 로드 완료');
   
         // 6. 원하는 친구를 찾아 선택
-        let friendElements = await popupPage.$$('div.unit_chat');
+        let friendElements = await popupPage.$$(friendDiv);
         let friendFound = false;
         let scrollAttempts = 0;
         // 스크롤이 더 이상 내려가지 않을 때까지 반복
         while (!friendFound) {
           // 현재 페이지의 친구 목록 검색
-          friendElements = await popupPage.$$(friendListSelector);
+          friendElements = await popupPage.$$(friendDiv);
           for (const friendEl of friendElements) {
             const nameEl = await friendEl.$('strong.tit_name');
             if (nameEl) {
