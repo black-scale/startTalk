@@ -35,6 +35,8 @@
 </template>
   
 <script>
+    import { mapActions, mapGetters } from 'vuex'
+import store from '../store';
 
     export default {
     data() {
@@ -50,6 +52,7 @@
                 { region: "강남구", name: "가게이름8" },
                 { region: "인천", name: "가게이름1" },
                 { region: "인천", name: "가게이름2" },
+                { region: "수원", name: "손지언" },
                 { region: "수원", name: "가게이름3" },
                 { region: "수원", name: "가게이름4" },
                 { region: "수원", name: "가게이름5" },
@@ -62,6 +65,8 @@
         };
     },
     computed: {
+        ...mapGetters(['getRoom']),
+
         // 첫번째 탭은 "전체", 그 뒤로 각 지역 이름이 나옵니다.
         regions() {
             const all_regions = this.stores.map(store => store.region);
@@ -77,6 +82,7 @@
         }
     },
     methods: {
+        ...mapActions(['updateRoom']),
         selectRegion(region) {
         this.activeRegion = region;
         },
@@ -89,6 +95,12 @@
         },
         selectRoom(room) {
             // 선택된 채팅방 정보를 부모 컴포넌트에 전달
+            console.log(room.name, room.region)
+            this.updateRoom( {
+                newRoom: room.name,
+                newRegion: room.region
+                });
+            
             this.$emit("chat-room-selected", room);
         }
     }
