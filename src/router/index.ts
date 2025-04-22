@@ -5,6 +5,7 @@ import RegisterKeywordView from '../views/RegisterKeywordView.vue'
 import AutoSend from '../views/AutoSend.vue'
 import KakaoMessageSender from '../components/KakaoMessageSender.vue'
 import KakaoMessgeSubscriber from '../components/KakaoMessgeSubscriber.vue'
+import store from '../store' 
 
 
 const routes: Array<RouteRecordRaw> = [
@@ -20,5 +21,15 @@ const router = createRouter({
   history: createWebHistory(),
   routes
 })
+
+router.beforeEach((to: any, from: any, next: () => void) => {
+  const apiKey = store.state.devKey?.apiKey;
+
+  if (apiKey && !store.state.message.subscriptionStarted) {
+    store.dispatch('message/initSubscription');
+  }
+
+  next();
+});
 
 export default router

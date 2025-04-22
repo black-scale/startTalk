@@ -79,6 +79,7 @@ import { generateClient } from "aws-amplify/api"
 import { type Schema } from "../../amplify/data/resource"
 import { mapActions, mapGetters } from 'vuex'
 import { defineComponent, ref } from 'vue'
+import store from '../store';
 
 declare global {
   interface Window {
@@ -143,13 +144,22 @@ export default defineComponent({
       
       //sendDefault를 호출하여 메시지 전송 인터페이스를 엽니다.
       const client = generateClient<Schema>()
-      client.queries.autoSendServer({
+      const loginresult = client.queries.autoSendServer({
            userKey: this.kakaoApiKey,
            userMessage: '스타트톡 로그인 완료',
            friendName: 'send_myself',
         })
 
+      const parsed = JSON.parse(loginresult.autoSendServer);
+
       this.setKakaoKey(this.kakaoApiKey);
+      if(parsed.statusCode == 200){
+        store.dispatch('message/initSubscription');
+      }
+      else{
+        store.dispatch('message/stopSubscription');
+      }
+      
 
 
     },
