@@ -12,12 +12,7 @@ export default {
     };
   },
   mounted() {
-    // 카카오 API를 사용해 사용자의 친구목록이나 대상자 목록을 가져오는 로직 추가
-    // 예시: fetchKakaoUsers();
-    this.kakaoUsers = [
-      { uuid: "abc123def456", name: "홍길동" },
-      { uuid: "ghi789jkl012", name: "김철수" }
-    ];
+
   },
   methods: {
     saveKeyword() {

@@ -72,7 +72,7 @@ const schema = a.schema({
       
 
 })
-.authorization(allow => [allow.resource(saveKakaoLoginInfo).to(['mutate']), allow.resource(autoSendServer).to(['mutate'])])
+.authorization(allow => [allow.resource(saveKakaoLoginInfo).to(['mutate', 'query']), allow.resource(autoSendServer).to(['mutate', 'query'])])
 ;
 
 export type Schema = ClientSchema<typeof schema>;

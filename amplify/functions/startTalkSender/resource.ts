@@ -5,7 +5,6 @@ export const startTalkSender = defineFunction({
   name: 'starttalk-sender',
   // optionally specify a path to your handler (defaults to "./handler.ts")
   entry: './src/handler.js',
-  resourceGroupName: "data",
   environment: {
     API_ENDPOINT: process.env.API_ENDPOINT || "null",
     API_KEY: secret('API_KEY') || process.env.API_KEY

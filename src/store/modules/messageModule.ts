@@ -1,7 +1,7 @@
 import { Module } from 'vuex'
 import { generateClient } from 'aws-amplify/data';
-import { KeywordEntry, KeywordEntriesState, TimeItem } from '../store/modules/keywordModule'
-import type { Schema } from "../../amplify/data/resource"
+import { KeywordEntry, KeywordEntriesState, TimeItem } from '../../store/modules/keywordModule'
+import type { Schema } from "../../../amplify/data/resource"
 
 export interface messageEntry {
     room: string
@@ -10,11 +10,15 @@ export interface messageEntry {
     timestamp: string
     isSend:boolean
     error:boolean
-    errorMessage:string
+    errorMessage:string,
+    receiver: string
   }
   
 export interface messageEntriesState {
-  entries: messageEntry[]
+  entries: messageEntry[],
+  subscriptionStarted: boolean,
+  subscription: any,
+  mode: string,
 }
 
 const messageModule: Module<messageEntriesState, any> = {
@@ -22,32 +26,43 @@ const messageModule: Module<messageEntriesState, any> = {
   state: {
     entries: [],
     subscriptionStarted: false,
-    subscription: null as any
+    subscription: null as any,
+    mode: 'off'
   },
   mutations: {
-    ADD_KEYWORD_ENTRY(state, entry: messageEntry) {
+    ADD_MESSAGE_ENTRY(state, entry: messageEntry) {
       state.entries.push(entry)
     },
-    UPDATE_KEYWORD_ENTRY(state, payload: { index: number; entry: messageEntry }) {
+    UPDATE_MESSAGE_ENTRY(state, payload: { index: number; entry: messageEntry }) {
       state.entries.splice(payload.index, 1, payload.entry)
     },
-    REMOVE_KEYWORD_ENTRY(state, index: number) {
+    REMOVE_MESSAGE_ENTRY(state, index: number) {
       state.entries.splice(index, 1)
+    },
+    SET_MODE(state, _mode:string){
+      state.mode = _mode
+    },
+    CLEAR_ALL_MESSAGES(state) {
+      state.entries = [];
     }
   },
   actions: {
     addMessageEntry({ commit }, entry: messageEntry) {
-      commit('ADD_KEYWORD_ENTRY', entry)
+      commit('ADD_MESSAGE_ENTRY', entry)
     },
     updateMessageEntry({ commit, state }, payload: { index: number; entry: messageEntry }) {
+      console.log(payload)
       if (payload.index >= 0 && payload.index < state.entries.length) {
-        commit('UPDATE_KEYWORD_ENTRY', payload)
+        commit('UPDATE_MESSAGE_ENTRY', payload)
       }
     },
     removeMessageEntry({ commit, state }, index: number) {
       if (index >= 0 && index < state.entries.length) {
-        commit('REMOVE_KEYWORD_ENTRY', index)
+        commit('REMOVE_MESSAGE_ENTRY', index)
       }
+    },
+    setMode({commit}, mode:string){
+      commit('SET_MODE',mode)
     },
 
     // @ input: message: subscribe 한 메시지, keywordEntry: 조건을 만족하는 keyword entry
@@ -74,14 +89,30 @@ const messageModule: Module<messageEntriesState, any> = {
     },
     // @ input: message: receiver에게 보낼 메시지 내용, receiver: 수신자 이름(카카오톡 닉네임과 일치해야 함함)
     // @ output: 메시지 전송 결과
-    async sendMessage({ rootGetters }, { message, receiver }: { message: string, receiver: string }) {
+    async sendMessage({ },entry:messageEntry) {
       const client = generateClient<Schema>();
-    
-      await client.queries.autoSendServer({
-        userKey: rootGetters.getKey, // Vuex getter 사용
-        userMessage: message,
-        friendName: receiver,
-      });
+      const apiKey = JSON.parse(localStorage.getItem('devKey')).devKey
+      console.log( apiKey , entry.contentToSend, entry.room)
+      try {
+        const res = await client.queries.autoSendServer({
+          userKey: apiKey || '',
+          userMessage: entry.contentToSend,
+          friendName: entry.room
+        });
+
+        const result = JSON.parse(res.data.toString());
+        if (result.statusCode === 200) {
+          entry.isSend = true;
+        } else {
+          entry.error = true;
+          entry.errorMessage = result.body || '전송 실패';
+        }
+      } catch (err) {
+        entry.error = true;
+        entry.errorMessage = err.message || '예외 발생';
+      }
+
+      return entry as messageEntry
     },
     // 메시지 필터링
     // 톡방 이름과 키워드 포함 여부 검사
@@ -108,11 +139,25 @@ const messageModule: Module<messageEntriesState, any> = {
           
   
           const matchedEntries = await dispatch('filterMessage', messageData);
+          console.log(matchedEntries, messageData)
           if (matchedEntries.length > 0) {
             for (const entry of matchedEntries) {
-              commit('ADD_MESSAGE', messageData);
               const message_to_send = await dispatch('formatMessage', { message: messageData, keywordEntry: entry });
-              await dispatch('sendMessage', { message: message_to_send, receiver: entry.receiver });
+              let newMessage: messageEntry = {
+                room: messageData.room,
+                content: messageData.message,
+                contentToSend: message_to_send,
+                timestamp: messageData.createdAt,
+                isSend: false,
+                error: false,
+                errorMessage: '',
+                receiver: entry.receiver
+              }
+              if(state.mode=="auto"){
+                newMessage = await dispatch('sendMessage', newMessage);
+              }
+              commit('ADD_MESSAGE_ENTRY', newMessage);
+              console.log(newMessage)
             }
           }
         }
@@ -121,6 +166,9 @@ const messageModule: Module<messageEntriesState, any> = {
       state.subscription = subscription;
       state.subscriptionStarted = true;
       console.log('메시지 구독 시작됨');
+    },
+    clearMessage({commit}){
+      commit('CLEAR_ALL_MESSAGES');
     },
     stopSubscription({ state }) {
       if (state.subscriptionStarted) {
@@ -132,12 +180,14 @@ const messageModule: Module<messageEntriesState, any> = {
     }
   },
   getters: {
-    allKeywordEntries(state): messageEntry[] {
+    allMessageEntries(state): messageEntry[] {
       return state.entries
     },
-    getKeywordEntryByIndex: (state) => (index: number): messageEntry | undefined => {
+    getMessageEntryByIndex: (state) => (index: number): messageEntry | undefined => {
       return state.entries[index]
-    }
+    },
+    getMode:(state)=> state.mode
+  
   }
 }
 

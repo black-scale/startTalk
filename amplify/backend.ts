@@ -15,6 +15,7 @@ const backend = defineBackend({
   startTalkSender
 });
 
+
 const startTalkMessageTable = backend.data.resources.tables["startTalkMessage"];
 const policy = new Policy(
   Stack.of(startTalkMessageTable),

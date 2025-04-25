@@ -15,7 +15,7 @@ const client = generateClient<Schema>()
 const requiredCookies = ['_kahai', '_karmt', '_karmtea', '_kawlt', '_kawltea'];
 
 // 환경 변수 또는 직접 설정
-const SEND_DEFAULT_URL = process.env.SEND_DEFAULT_URL || 'https://localhost:5173/AutoSend';
+const SEND_DEFAULT_URL = env.SEND_DEFAULT_URL || 'https://localhost:5173/AutoSend';
 
 /**
  * DynamoDB에서 특정 사용자(userId)의 쿠키 정보를 조회하는 함수.
@@ -25,7 +25,9 @@ const SEND_DEFAULT_URL = process.env.SEND_DEFAULT_URL || 'https://localhost:5173
  */
 async function getCookiesFromDynamo(userId: string): Promise<Cookie[] | null> {
   const { data: response } = await client.models.kakaoLoginCookie.get({id: userId })
-
+  const { data: allresponse } = await client.models.kakaoLoginCookie.list()
+  console.log(client.models,allresponse )
+  console.log(response)
 
   if (!response || !response.cookieData) {
     return null;
@@ -40,7 +42,7 @@ async function getCookiesFromDynamo(userId: string): Promise<Cookie[] | null> {
 }
 
 async function getLoginInfoFromDynamo(userKey: string): Promise<{ userID: string; userPW: string } | null> {  
-
+  console.log(env.AMPLIFY_DATA_GRAPHQL_ENDPOINT)
   try {
     const { data: response } = await client.models.kakaoLoginInfo.get({id: userKey })
     if (!response) {
@@ -63,7 +65,8 @@ async function getLoginInfoFromDynamo(userKey: string): Promise<{ userID: string
   // DynamoDB에 저장할 때, 필요한 쿠키 데이터만 필터링할 수 있습니다.
   // 여기서는 전체 쿠키를 JSON 문자열로 저장합니다.
   // expireAt은 필수 쿠키 중 가장 빠른 만료 시간을 계산합니다
-async function storeCookiesInDynamo(userKey: string, cookies: Cookie[]): Promise<void> {
+  // return: expireAt(성공시), -1(실패시)
+async function storeCookiesInDynamo(userKey: string, cookies: Cookie[]): Promise<{expiredAt: number}> {
   // 필수 쿠키의 expire 값 중 가장 작은 값을 계산 (만료 시간이 있는 쿠키만)
   let minExpire: number | null = null;
   for (const cookie of cookies) {
@@ -76,11 +79,11 @@ async function storeCookiesInDynamo(userKey: string, cookies: Cookie[]): Promise
   if (minExpire === null) {
     minExpire = 0;
   }   
-
+  minExpire = Math.floor(minExpire)
   console.log("stored cookie: ", {id: userKey,
     userKey:userKey ,
     cookieData: JSON.stringify(cookies) ,
-    expireAt:  Math.floor(minExpire) ,
+    expireAt:  minExpire,
     createdAt:new Date().toISOString() ,
 })
 
@@ -88,22 +91,25 @@ async function storeCookiesInDynamo(userKey: string, cookies: Cookie[]): Promise
     const { data: response } = await client.models.kakaoLoginCookie.create({id: userKey,
       userKey:userKey ,
       cookieData: JSON.stringify(cookies) ,
-      expireAt: Math.floor(minExpire) ,
+      expireAt: minExpire ,
       createdAt:new Date().toISOString() ,
   })
 
-  console.log(`쿠키 정보가 DynamoDB(${response?.cookieData})에 저장되었습니다.`);
-
+    console.log(`쿠키 정보가 DynamoDB(${response?.cookieData})에 저장되었습니다.`);
+    return response == null?{expiredAt: -1} : {expiredAt: minExpire};  
 
   } catch (error) {
     console.error('DynamoDB 쓰기 오류:', error);
+    return {
+      expiredAt: -1
+    };
   }
 }
 
   // DynamoDB에 저장할 때, 필요한 쿠키 데이터만 필터링할 수 있습니다.
   // 여기서는 전체 쿠키를 JSON 문자열로 저장합니다.
   // expireAt은 필수 쿠키 중 가장 빠른 만료 시간을 계산합니다
-  async function updateCookiesInDynamo(userKey: string, cookies: Cookie[]): Promise<void> {
+  async function updateCookiesInDynamo(userKey: string, cookies: Cookie[]): Promise<{expiredAt: number}> {
     // 필수 쿠키의 expire 값 중 가장 작은 값을 계산 (만료 시간이 있는 쿠키만)
     let minExpire: number | null = null;
     for (const cookie of cookies) {
@@ -116,11 +122,13 @@ async function storeCookiesInDynamo(userKey: string, cookies: Cookie[]): Promise
     if (minExpire === null) {
       minExpire = 0;
     }   
+
+    minExpire = Math.floor(minExpire)
   
     console.log("stored cookie: ", {id: userKey,
       userKey:userKey ,
       cookieData: JSON.stringify(cookies) ,
-      expireAt:  Math.floor(minExpire) ,
+      expireAt:  minExpire,
       createdAt:new Date().toISOString() ,
   })
   
@@ -128,15 +136,18 @@ async function storeCookiesInDynamo(userKey: string, cookies: Cookie[]): Promise
       const { data: response } = await client.models.kakaoLoginCookie.update({id: userKey,
         userKey:userKey ,
         cookieData: JSON.stringify(cookies) ,
-        expireAt: Math.floor(minExpire) ,
+        expireAt: minExpire,
         createdAt:new Date().toISOString() ,
     })
   
-    console.log(`쿠키 정보가 DynamoDB(${response?.cookieData})에 수정되었습니다.`);
-  
+      console.log(`쿠키 정보가 DynamoDB(${response?.cookieData})에 저장되었습니다.`);
+      return response == null?{expiredAt: -1} : {expiredAt: minExpire};  
   
     } catch (error) {
       console.error('DynamoDB 쓰기 오류:', error);
+      return {
+        expiredAt: -1
+      };
     }
   }
 
@@ -151,11 +162,14 @@ async function storeCookiesInDynamo(userKey: string, cookies: Cookie[]): Promise
 
 export const handler: Schema['autoSendServer']["functionHandler"] = async (event) => {
   let browser: Browser | null = null;
+  let expire = {expiredAt: -1};
+  let userID = ""
   try {
     const { friendName, userKey, userMessage } = event.arguments
     if (!friendName || !userKey || !userMessage) {
       return { statusCode: 400, body: 'friendName, userKey, userMessage 파라미터 필요' };
     }
+    console.log(JSON.stringify(process.env));
 
     // 1. DynamoDB에서 쿠키 정보 조회
     const storedCookies = await getCookiesFromDynamo(userKey);
@@ -208,6 +222,8 @@ export const handler: Schema['autoSendServer']["functionHandler"] = async (event
         const _id = credentials.userID;
         const _pw = credentials.userPW;
         console.log(`조회된 자격증명: ID=${_id}, PW=${_pw}`);
+
+        userID = _id;
   
         await popupPage.type('#loginId--1', _id, { delay: 50 });
         await popupPage.type('#password--2', _pw, { delay: 50 });
@@ -250,7 +266,7 @@ export const handler: Schema['autoSendServer']["functionHandler"] = async (event
         const allCookies: Cookie[] = await browser!.defaultBrowserContext().cookies();
 
         // DynamoDB에 쿠키 전송
-        storeCookiesInDynamo(userKey, allCookies);     
+        expire = await storeCookiesInDynamo(userKey, allCookies);     
         
         try {
           await popupPage.waitForSelector('div.unit_chat', { timeout: 500 });
@@ -383,76 +399,94 @@ export const handler: Schema['autoSendServer']["functionHandler"] = async (event
 
         // 5. (여기서 sendDefault 호출 후 자동화 작업을 추가할 수 있음)     
         const friendDiv = 'div.unit_chat' 
-        let friendListSelector = await popupPage.$$(friendDiv);
-        let loginButton = await popupPage.$$('#saveSignedIn--4');
-        let loginEasyExists = await popupPage.$('.login_easy');
-        
-        // 만약 계정 선택 창이 뜰 경우
-        if (loginEasyExists) {
-
-          let content1_1 = await popupPage.content();
-          console.log('계정 선택을 위한한 페이지로 전환 완료' , popupPage.url());
-          console.log("팝업 페이지 내용2:", content1_1);
-          await page.evaluate(() => {
-            const firstAccount = document.querySelector('.list_easy li .wrap_profile');
-            console.log("first Account: ", firstAccount)
-            if (firstAccount instanceof HTMLElement) {
-              firstAccount.click();
-            }
-          });          
-        }
-          //2차 인증증일때때
-        else if(loginButton.length === 0 && friendListSelector.length === 0){               
-          let content1 = await popupPage.content();
-          console.log('2차 인증을 위한 페이지로 전환 완료' , popupPage.url());
-          console.log("팝업 페이지 내용2:", content1);
-          await popupPage.waitForNavigation({ waitUntil: 'networkidle2', timeout: 300000 });  
-        }
-        //로그인부터 다시 시작하는 창이 뜰때때
-        else if(loginButton.length > 0){           
-          let content1 = await popupPage.content();
-          console.log('로그인을 위한 페이지로 전환 완료' , popupPage.url());
-          console.log("팝업 페이지 내용2:", content1);
-          const credentials = await getLoginInfoFromDynamo(userKey);
-          if (!credentials) {
-            console.error('자격증명을 가져오지 못했습니다.');
-              return {
-              statusCode: 403,
-              body: JSON.stringify('자격증명을 가져오지 못했습니다.'),
-              };
-            }
-          const _id = credentials.userID;
-          const _pw = credentials.userPW;
-          console.log(`조회된 자격증명: ID=${_id}, PW=${_pw}`);
-
-        
-          try{
-            await popupPage.type('#loginId--1', _id, { delay: 50 });
-            await popupPage.type('#password--2', _pw, { delay: 50 });
-            
-      
-            // 4. "간편로그인 정보 저장" 체크박스를 체크하고 값 변경
-            await popupPage.click('#saveSignedIn--4', { delay: 10 });
-
-      
-            // 5. 로그인 버튼 클릭
-            await popupPage.click('button.btn_g.highlight.submit', { delay: 10 });
+        let friendListSelector = await popupPage.$(friendDiv);
+        let errorElement = null
+        let iter = 0;
+        while(true){
+          errorElement = await popupPage.$('p.desc_error');
+          friendListSelector = await popupPage.$(friendDiv);
+          iter += 1;
+          if(errorElement != null || friendListSelector != null || iter>5){
+            break
           }
-          catch(e){
-            console.log("no login element error: ",e )
-          }
+          
+          let loginButton = await popupPage.$$('#saveSignedIn--4');
+          let loginEasyExists = await popupPage.$('.login_easy');
+          let loginCertify = await popupPage.$('div.login_certify')
+          
+          // 만약 계정 선택 창이 뜰 경우
+          if (loginEasyExists) {
   
+            let content1_1 = await popupPage.content();
+            console.log('계정 선택을 위한한 페이지로 전환 완료' , popupPage.url());
+            console.log("팝업 페이지 내용2:", content1_1);
+            await popupPage.evaluate(() => {
+              const firstAccount = document.querySelector('.list_easy li .wrap_profile');
+              console.log("first Account: ", firstAccount)
+              if (firstAccount instanceof HTMLElement) {
+                page.waitForNavigation({ waitUntil: 'networkidle2' , timeout: 3000}),
+                firstAccount.click();
+              }
+            });          
+          }
+            //2차 인증증일때때
+          else if(loginCertify){               
+            let content1 = await popupPage.content();
+            console.log('2차 인증을 위한 페이지로 전환 완료' , popupPage.url());
+            console.log("팝업 페이지 내용2:", content1);
+            await popupPage.waitForNavigation({ waitUntil: 'networkidle2', timeout: 300000 });  
+          }
+          //로그인부터 다시 시작하는 창이 뜰때때
+          else if(loginButton){           
+            let content1 = await popupPage.content();
+            console.log('로그인을 위한 페이지로 전환 완료' , popupPage.url());
+            console.log("팝업 페이지 내용2:", content1);
+            const credentials = await getLoginInfoFromDynamo(userKey);
+            if (!credentials) {
+              console.error('자격증명을 가져오지 못했습니다.');
+                return {
+                statusCode: 403,
+                body: JSON.stringify('자격증명을 가져오지 못했습니다.'),
+                };
+              }
+            const _id = credentials.userID;
+            const _pw = credentials.userPW;
+            console.log(`조회된 자격증명: ID=${_id}, PW=${_pw}`);
+              
+            userID = _id;
+          
+            try{
+              await popupPage.type('#loginId--1', _id, { delay: 50 });
+              await popupPage.type('#password--2', _pw, { delay: 50 });
+              
+        
+              // 4. "간편로그인 정보 저장" 체크박스를 체크하고 값 변경
+              await popupPage.click('#saveSignedIn--4', { delay: 10 });
+  
+        
+              // 5. 로그인 버튼 클릭
+              await popupPage.click('button.btn_g.highlight.submit',{delay: 50})
+              await new Promise(resolve => setTimeout(resolve, 500));  
+              
+              
+            }
+            catch(e){
+              console.log("no login element error: ",e )
+            }
+    
+          }
+          
         }
+ 
 
         // 6. 로그인 후 페이지 전환 또는 에러 메시지 감지를 기다림
         // const navigationPromise = popupPage.waitForNavigation({ waitUntil: 'networkidle2', timeout: 1500 }).then(() => 'navigated');
         
-        let submitElements = await popupPage.$$('p.desc_error');
+       
 
             // 아이디/비밀번호 틀렸을경우
-        if (!submitElements) {
+        if (errorElement) {
           // 에러 메시지가 감지된 경우, 에러 텍스트를 추출하여 로그와 응답으로 반환합니다.
-          const errorElement = await popupPage.$('p.desc_error');
           const errorText = await popupPage.evaluate((el:any)=> el.innerText, errorElement);
           console.error('로그인 실패: ' + errorText);
           await browser.close();
@@ -472,12 +506,12 @@ export const handler: Schema['autoSendServer']["functionHandler"] = async (event
         const content = await popupPage.content();
         console.log("페이지 내용:", content);
         // DynamoDB에 쿠키 전송
-        updateCookiesInDynamo(userKey, allCookies);     
+        expire = await updateCookiesInDynamo(userKey, allCookies);     
         // 타임아웃 등 에러가 발생한 경우 실행할 대체 작업
         
 
         await popupPage.waitForSelector('div.unit_chat', { timeout: 1200 });
-        if (friendListSelector.length === 0) {
+        if (!friendListSelector) {
           console.error("친구 목록을 로드하지 못했습니다. 로그인 상태를 확인하세요.");
           return {
             statusCode: 500,
@@ -573,6 +607,10 @@ export const handler: Schema['autoSendServer']["functionHandler"] = async (event
   } 
   return {
     statusCode: 200,
-    body: 'Auto share executed successfully',
+    body: JSON.stringify({message: 'Auto share executed successfully',
+          cookieExpiredAt: expire.expiredAt,
+          kakaoID: userID
+    })
+    
   };
 };

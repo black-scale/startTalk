@@ -56,7 +56,7 @@ const keywordModule: Module<KeywordEntriesState, any> = {
     getKeywordEntryByIndex: (state) => (index: number): KeywordEntry | undefined => {
       return state.entries[index]
     }
-  }
+  },
 }
 
 export default keywordModule

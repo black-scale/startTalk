@@ -14,12 +14,15 @@
       />
     </div>
     <div class="p-4">
-      <div v-if="!isInitialized" class="mb-4">
+      <div v-if="!isLoggedIn" class="mb-4">
         <h2 class="text-lg font-bold">(1/2) 스타트톡을 사용하려면 카카오톡으로 로그인 해보세요</h2>
         <input type="text" id="apiKey" v-model="kakaoApiKey" placeholder="Enter your Kakao API key" />
         <button @click="kakaoInitialize" class="mt-2 w-full bg-yellow-500 text-white py-2 rounded-lg shadow-md hover:bg-yellow-600 focus:outline-none">
           카카오톡 로그인
         </button>
+      </div>
+      <div v-if="isWatingLoggedIn" class="mb-4">
+        <h2 class="text-lg font-bold">서버에 로그인 중입니다</h2>
       </div>
 
       <!-- 선택된 채팅방이 있을 때 -->
@@ -52,17 +55,9 @@
       </div>   
 
       <!-- 모두 선택됐을 때 메뉴 바 노출 -->
-      <div v-if="selectedChatRoom && isInitialized" class="flex overflow-x-auto space-x-4 my-2">
-        <button class="flex flex-shrink-0 items-center w-40 bg-blue-200 px-4 py-2 rounded">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 4v16m8-8H4" />
-          </svg>
-          키워드 검색
-        </button>
-        <button class="flex-shrink-0 w-30 bg-blue-200 px-4 py-2 rounded" @click="$router.push('/keyword')" >키워드 편집</button>
-        <button class="flex-shrink-0 w-30 bg-blue-200 px-4 py-2 rounded">푸시알림 ON</button>
-        <button class="flex-shrink-0 w-30 bg-blue-200 px-4 py-2 rounded">작동중:자동 전송</button>
-        <button class="flex-shrink-0 w-30 bg-blue-200 px-4 py-2 rounded">작동중:수동 전송</button>
+      <div v-if="selectedChatRoom && isLoggedIn" class="flex overflow-x-auto space-x-4 my-2">
+
+        <MessageView/>
       </div>
       <!-- 팝업 컴포넌트를 조건부 렌더링 -->
       <SelectChatRoom v-if="isPopupVisible" @close="closeChatRoom" @chat-room-selected="handleChatRoomSelected"/>
@@ -75,6 +70,7 @@
 <script lang="ts">
 import SelectChatRoom from '../components/SelectChatRoom.vue';
 import KakaoLoginInfoForm from '../components/KakaoLoginInfoForm.vue'
+import MessageView from './MessageView.vue';
 import { generateClient } from "aws-amplify/api"
 import { type Schema } from "../../amplify/data/resource"
 import { mapActions, mapGetters } from 'vuex'
@@ -91,7 +87,8 @@ declare global {
 export default defineComponent({
   components: {
     SelectChatRoom,
-    KakaoLoginInfoForm
+    KakaoLoginInfoForm,
+    MessageView
   },  
   data() {
     return {
@@ -100,12 +97,14 @@ export default defineComponent({
       isInitialized: false,
       isPopupVisible:false,
       selectedChatRoom: null,
-      showKakaoLoginForm: false
+      showKakaoLoginForm: false,
+      isWatingLoggedIn:false,
+      isLoggedIn:false,
       
     };
   },
   computed:{
-    ...mapGetters(['getKey']),
+    ...mapGetters(['getKey', 'getExpireDate','getRoom']),
 
   },
   created() {
@@ -119,14 +118,20 @@ export default defineComponent({
     if(this.isInitialized && this.kakaoApiKey == ""){
       this.isInitialized = false;
     }
-    
+    this.isLoggedIn = this.getExpireDate > -1 ? true:false
+    this.selectedChatRoom = this.getRoom ? this.getRoom : null
+
+    // 이전 로그인 기록이 있다면 바로 시작
+    if(this.isLoggedIn && this.selectedChatRoom){
+      store.dispatch('messageModel/initSubscription');
+    }
   },
   methods: {
-    ...mapActions(['updateKey']),
+    ...mapActions(['updateKey','updateLoginState']),
     setKakaoKey() {
       this.updateKey(this.kakaoApiKey)
     },
-    kakaoInitialize() {
+    async kakaoInitialize() {
       
       if (!this.kakaoApiKey) {
         alert("Please enter a Kakao API key.");
@@ -142,22 +147,38 @@ export default defineComponent({
         this.isInitialized = true;
       }
       
-      //sendDefault를 호출하여 메시지 전송 인터페이스를 엽니다.
+      // //sendDefault를 호출하여 메시지 전송 인터페이스를 엽니다.
       const client = generateClient<Schema>()
-      const loginresult = client.queries.autoSendServer({
+      this.isWatingLoggedIn = true;
+      const loginresult = await client.queries.autoSendServer({
            userKey: this.kakaoApiKey,
            userMessage: '스타트톡 로그인 완료',
            friendName: 'send_myself',
         })
-
-      const parsed = JSON.parse(loginresult.autoSendServer);
-
+      this.isWatingLoggedIn = false;
+      console.log(loginresult)
+      const parsed = JSON.parse(loginresult.data.toString())
       this.setKakaoKey(this.kakaoApiKey);
+      //const parsed = {'statusCode': 200, 'body':{message: 'test', cookieExpiredAt:1748121715, kakaoID:'sju0924'}}
       if(parsed.statusCode == 200){
-        store.dispatch('message/initSubscription');
+        store.dispatch('messageModel/initSubscription');
+        alert("로그인 완료")
+        const body_parsed = JSON.parse(parsed.body.toString())
+        const expire = body_parsed.cookieExpiredAt? body_parsed.cookieExpiredAt : -1
+        const id =  body_parsed.kakaoID?  body_parsed.kakaoID : ""
+        this.isLoggedIn = true;
+        this.updateLoginState({expiredAt:expire, kakaoID: id})
+      }
+      else if(parsed.statusCode == 403){
+        alert("카카오톡 ID와 비밀번호를 입력해주세요")
+        this.setting()
+        this.updateKey("")
+        
       }
       else{
-        store.dispatch('message/stopSubscription');
+        alert(parsed.body)
+        this.updateKey("")
+        store.dispatch('messageModel/stopSubscription');
       }
       
 

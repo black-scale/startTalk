@@ -36,7 +36,6 @@
   
 <script>
     import { mapActions, mapGetters } from 'vuex'
-import store from '../store';
 
     export default {
     data() {
@@ -91,7 +90,7 @@ import store from '../store';
         },
         close() {
         // 부모 컴포넌트에서 이 이벤트를 받아 팝업을 닫도록 합니다.
-        this.$emit('close');
+         this.$emit('close');
         },
         selectRoom(room) {
             // 선택된 채팅방 정보를 부모 컴포넌트에 전달
@@ -104,7 +103,7 @@ import store from '../store';
             this.$emit("chat-room-selected", room);
         }
     }
-    };
+};
 </script>
   
   <style scoped>

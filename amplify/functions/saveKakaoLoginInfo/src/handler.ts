@@ -39,9 +39,9 @@ export const handler: Schema['saveKakaoLoginInfo']["functionHandler"] = async (e
       if (same) {
         // ✅ 완전히 같은 항목이면 아무 것도 안 함
         return {
-          statusCode: 200,
+          statusCode: 202,
           headers: { 'Access-Control-Allow-Origin': '*' },
-          body: JSON.stringify({ message: '동일한 항목이 이미 존재합니다. 저장하지 않음.' }),
+          body: JSON.stringify({ body: '동일한 항목이 이미 존재합니다. 저장하지 않음.' }),
         }
       } else {
         // ⚠️ key는 같지만 id/pw가 다르면 업데이트
@@ -51,7 +51,7 @@ export const handler: Schema['saveKakaoLoginInfo']["functionHandler"] = async (e
         return {
           statusCode: 200,
           headers: { 'Access-Control-Allow-Origin': '*' },
-          body: JSON.stringify({ message: '기존 항목 업데이트 완료',
+          body: JSON.stringify({ body: '기존 항목 업데이트 완료',
                                 response: existing
            }),
         }
@@ -62,16 +62,16 @@ export const handler: Schema['saveKakaoLoginInfo']["functionHandler"] = async (e
 
 
       return {
-    statusCode: 200,
-    headers: {
-      'Access-Control-Allow-Origin': 'http://localhost:5173',
-      'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
-    },
-    body: JSON.stringify({ message: '요청 성공' ,
-                            response: create
-    }),
-  }
+        statusCode: 201 ,
+        headers: {
+          'Access-Control-Allow-Origin': 'http://localhost:5173',
+          'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type',
+        },
+        body: JSON.stringify({ body: '요청 성공' ,
+                                response: create
+        }),
+      }
     }
   } catch (error) {
     console.error(error)
