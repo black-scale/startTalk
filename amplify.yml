@@ -12,8 +12,8 @@ backend:
         - echo "AMPLIFY_DATA_MODEL_INTROSPECTION_SCHEMA_BUCKET_NAME=$AMPLIFY_DATA_MODEL_INTROSPECTION_SCHEMA_BUCKET_NAME" >> .env
         - echo "AMPLIFY_DATA_MODEL_INTROSPECTION_SCHEMA_KEY=$AMPLIFY_DATA_MODEL_INTROSPECTION_SCHEMA_KEY" >> .env
         - cat .env
-        - npm ci --cache .npm --prefer-offline --loglevel verbose
-        - cd amplify/functions/autoSendServer/src && npm ci && cd -
+        - npm ci
+        - cd amplify/functions/autoSendServer/src && pwd && npm ci && cd -
         - cd amplify/functions/saveKakaoLoginInfo/src && npm ci && cd -
         - cd amplify/functions/startTalkSender/src && npm ci && cd -
         - npx ampx pipeline-deploy --branch $AWS_BRANCH --app-id $AWS_APP_ID
