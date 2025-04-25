@@ -13,7 +13,8 @@ backend:
         - echo "AMPLIFY_DATA_MODEL_INTROSPECTION_SCHEMA_KEY=$AMPLIFY_DATA_MODEL_INTROSPECTION_SCHEMA_KEY" >> .env
         - cat .env
         - npm config set registry https://registry.npmmirror.com
-        - npm ci
+        - npm install -g pnpm
+        - pnpm install --frozen-lockfile
         - cd amplify/functions/autoSendServer/src && pwd && npm ci && cd -
         - cd amplify/functions/saveKakaoLoginInfo/src && npm ci && cd -
         - cd amplify/functions/startTalkSender/src && npm ci && cd -
