@@ -10,6 +10,7 @@
     "src/**/*.d.ts",
     "src/**/*.vue"
   ],
+  "exclude": ["amplify/**/*"],
   "compilerOptions": {
     
     "target": "ES2022",
