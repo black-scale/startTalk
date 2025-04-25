@@ -14,7 +14,7 @@ backend:
         - cat .env
         - npm config set registry https://registry.npmmirror.com
         - npm install -g pnpm
-        - pnpm install --frozen-lockfile
+        - pnpm install --no-frozen-lockfile
         - cd amplify/functions/autoSendServer/src && pwd && npm ci && cd -
         - cd amplify/functions/saveKakaoLoginInfo/src && npm ci && cd -
         - cd amplify/functions/startTalkSender/src && npm ci && cd -
