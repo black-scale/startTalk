@@ -15,9 +15,10 @@ backend:
         - npm config set registry https://registry.npmmirror.com
         - npm install -g pnpm
         - pnpm install --no-frozen-lockfile
-        - cd amplify/functions/autoSendServer/src && pwd && npm ci && cd -
-        - cd amplify/functions/saveKakaoLoginInfo/src && npm ci && cd -
-        - cd amplify/functions/startTalkSender/src && npm ci && cd -
+        - pwd && ls
+        - cd amplify/functions/autoSendServer/src &&  pnpm install --no-frozen-lockfile  && cd -
+        - cd amplify/functions/saveKakaoLoginInfo/src && pnpm install --no-frozen-lockfile && cd -
+        - cd amplify/functions/startTalkSender/src && pnpm install --no-frozen-lockfile  && cd -
         - npx ampx pipeline-deploy --branch $AWS_BRANCH --app-id $AWS_APP_ID
 
 frontend:
