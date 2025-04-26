@@ -91,7 +91,7 @@ const messageModule: Module<messageEntriesState, any> = {
     // @ output: 메시지 전송 결과
     async sendMessage({ },entry:messageEntry) {
       const client = generateClient<Schema>();
-      const apiKey = JSON.parse(localStorage.getItem('devKey')).devKey
+      const apiKey = JSON.parse(localStorage.getItem('loginState')).devKey
       console.log( apiKey , entry.contentToSend, entry.room)
       try {
         const res = await client.queries.autoSendServer({
@@ -186,7 +186,7 @@ const messageModule: Module<messageEntriesState, any> = {
     getMessageEntryByIndex: (state) => (index: number): messageEntry | undefined => {
       return state.entries[index]
     },
-    getMode:(state)=> state.mode
+    getMode: (state) => state.mode
   
   }
 }

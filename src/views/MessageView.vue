@@ -93,21 +93,17 @@ const client = generateClient<Schema>()
 export default {
   data(){
     return{
-      mode:'off',
       isSendingMap: {} as Record<number, boolean>
     }
     
   },
+
   computed: {
     ...mapState("messageModel", {
-      allMessageEntries: (state:messageEntriesState)  => state.entries
+      allMessageEntries: (state:messageEntriesState)  => state.entries,
+      mode: (state:messageEntriesState) => state.mode
     }),
-    ...mapGetters(['messageModel/getMode'])
-  },
-  created() {
-    // 컴포넌트 생성 시점에 getter로 가져온 값을 localKey에 할당
-    this.mode = this.getMode  
-    this.clearMessage()
+    
   },
 
   methods: {
