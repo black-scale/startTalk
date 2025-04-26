@@ -237,8 +237,8 @@ export const handler: Schema['autoSendServer']["functionHandler"] = async (event
         await popupPage.click('button.btn_g.highlight.submit');
   
        // 6. 로그인 후 페이지 전환 또는 에러 메시지 감지를 기다림
-        const navigationPromise = popupPage.waitForNavigation({ waitUntil: 'networkidle2', timeout: 1000 }).then(() => 'navigated');
-        const errorPromise = popupPage.waitForSelector('p.desc_error', { timeout: 1000 }).then(() => 'error');
+        const navigationPromise = popupPage.waitForNavigation({ waitUntil: 'networkidle2', timeout: 5000 }).then(() => 'navigated');
+        const errorPromise = popupPage.waitForSelector('p.desc_error', { timeout: 500 }).then(() => 'error');
 
         const result = await Promise.race([navigationPromise, errorPromise]);
 
@@ -274,7 +274,6 @@ export const handler: Schema['autoSendServer']["functionHandler"] = async (event
           // 이후의 자동화 작업을 여기서 진행합니다.
            // 5. (여기서 sendDefault 호출 후 자동화 작업을 추가할 수 있음)
           const friendListSelector = 'div.unit_chat';
-          await popupPage.waitForSelector('div.unit_chat', { timeout: 10000 });
           let friendList = await popupPage.$$(friendListSelector);
           if (friendList.length === 0) {
             console.error("친구 목록을 로드하지 못했습니다. 로그인 상태를 확인하세요.");
@@ -424,7 +423,6 @@ export const handler: Schema['autoSendServer']["functionHandler"] = async (event
               const firstAccount = document.querySelector('.list_easy li .wrap_profile');
               console.log("first Account: ", firstAccount)
               if (firstAccount instanceof HTMLElement) {
-                page.waitForNavigation({ waitUntil: 'networkidle2' , timeout: 3000}),
                 firstAccount.click();
               }
             });          
