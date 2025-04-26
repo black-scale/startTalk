@@ -1,18 +1,11 @@
 <template>
   <div class="fixed top-0 left-1/2 transform -translate-x-1/2  w-full max-w-md mx-auto bg-white shadow-lg rounded-lg overflow-hidden">
-    <div class="flex items-center justify-between p-4 bg-blue-500 text-white">
-      <div class="text-lg font-bold">LOGO</div>
-      <button @click="setting" class="focus:outline-none">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M12 8c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 10c-4.4 0-8-3.6-8-8s3.6-8 8-8 8 3.6 8 8-3.6 8-8 8zm0-14c-3.3 0-6 2.7-6 6s2.7 6 6 6 6-2.7 6-6-2.7-6-6-6z"/>
-        </svg>
-      </button>
-      <KakaoLoginInfoForm
-        v-if="showKakaoLoginForm"
-        @close="handleCloseKakaoForm"
-      />
-    </div>
+    <MainHeader
+      :show-kakao-login-form="showKakaoLoginForm"
+      :kakao-api-key="kakaoApiKey"
+      @open-kakao-form="handleOpenForm"
+      @close-kakao-form="handleCloseForm"
+    />
     <div class="p-4">
       <div v-if="!isLoggedIn" class="mb-4">
         <h2 class="text-lg font-bold">(1/2) 스타트톡을 사용하려면 카카오톡으로 로그인 해보세요</h2>
@@ -26,7 +19,7 @@
       </div>
 
       <!-- 선택된 채팅방이 있을 때 -->
-      <div v-if="selectedChatRoom" class="flex items-center justify-between p-4 bg-blue-200 rounded-lg">
+      <div v-if="isChatRootSelected && isLoggedIn" class="flex items-center justify-between p-4 bg-blue-200 rounded-lg">
         <div class="flex items-center space-x-4">
           <h2 class="text-lg font-bold">
             {{ selectedChatRoom.region }} {{ selectedChatRoom.name }}
@@ -47,7 +40,7 @@
         </button>        
       </div>
       <!-- 선택된 채팅방이 없을 때 버튼 노출 -->
-      <div v-else>
+      <div v-if="!isChatRootSelected">
         <h2 class="text-lg font-bold">(2/2) 스타트톡 사용을 할 채팅방을 골라보세요</h2>
           <button @click="openChatRoom" class="mt-2 w-full bg-blue-500 text-white py-2 rounded-lg shadow-md hover:bg-green-600 focus:outline-none">
             채팅방 선택
@@ -55,7 +48,7 @@
       </div>   
 
       <!-- 모두 선택됐을 때 메뉴 바 노출 -->
-      <div v-if="selectedChatRoom && isLoggedIn" class="flex overflow-x-auto space-x-4 my-2">
+      <div v-if="isChatRootSelected && isLoggedIn" class="flex overflow-x-auto space-x-4 my-2">
 
         <MessageView/>
       </div>
@@ -76,6 +69,7 @@ import { type Schema } from "../../amplify/data/resource"
 import { mapActions, mapGetters } from 'vuex'
 import { defineComponent, ref } from 'vue'
 import store from '../store';
+import MainHeader from '../components/MainHeader.vue';
 
 declare global {
   interface Window {
@@ -88,7 +82,8 @@ export default defineComponent({
   components: {
     SelectChatRoom,
     KakaoLoginInfoForm,
-    MessageView
+    MessageView,
+    MainHeader
   },  
   data() {
     return {
@@ -97,6 +92,7 @@ export default defineComponent({
       isInitialized: false,
       isPopupVisible:false,
       selectedChatRoom: null,
+      isChatRootSelected :false,
       showKakaoLoginForm: false,
       isWatingLoggedIn:false,
       isLoggedIn:false,
@@ -107,18 +103,42 @@ export default defineComponent({
     ...mapGetters(['getKey', 'getExpireDate','getRoom']),
 
   },
+  onBeforeRouteEnter(to: any, from: any, next) {
+      this.kakaoApiKey = this.getKey || ''
+      this.isLoggedIn = this.getExpireDate > -1 ? true:false
+      this.isChatRootSelected = this.getRoom.selectedRoom ? true:false
+      this.selectedChatRoom = this.getRoom ? this.getRoom : null
+
+      next()
+    },
+
+    // 라우트가 변경될 때
+    onBeforeRouteUpdate(to : any, from:any , next) {
+      this.kakaoApiKey = this.getKey || ''
+      this.isLoggedIn = this.getExpireDate > -1 ? true:false
+      this.isChatRootSelected = this.getRoom.selectedRoom != "" ? true:false
+      this.selectedChatRoom = this.getRoom ? this.getRoom : null
+      next()
+    },
   created() {
     // 컴포넌트 생성 시점에 getter로 가져온 값을 localKey에 할당
     this.kakaoApiKey = this.getKey || ''
     console.log(this.kakaoApiKey)
     if (!this.isInitialized && this.kakaoApiKey != "") {
+      try{
         window.Kakao.init(this.kakaoApiKey);
         this.isInitialized = true;
+      }
+      catch{
+        console.log("kakao already initialized")
+      }
+       
       }
     if(this.isInitialized && this.kakaoApiKey == ""){
       this.isInitialized = false;
     }
     this.isLoggedIn = this.getExpireDate > -1 ? true:false
+    this.isChatRootSelected = this.getRoom.name  ? true:false
     this.selectedChatRoom = this.getRoom ? this.getRoom : null
 
     // 이전 로그인 기록이 있다면 바로 시작
@@ -143,7 +163,13 @@ export default defineComponent({
       }
       // 초기화되지 않은 경우에만 API 키로 초기화합니다.
       if (!this.isInitialized && this.kakaoApiKey != "") {
-        window.Kakao.init(this.kakaoApiKey);
+        try{
+          window.Kakao.init(this.kakaoApiKey);
+        }
+        catch{
+          console.log("Kakao already initialized")
+        }
+        
         this.isInitialized = true;
       }
       
@@ -171,8 +197,7 @@ export default defineComponent({
       }
       else if(parsed.statusCode == 403){
         alert("카카오톡 ID와 비밀번호를 입력해주세요")
-        this.setting()
-        this.updateKey("")
+        this.handleOpenForm()
         
       }
       else{
@@ -184,17 +209,16 @@ export default defineComponent({
 
 
     },
-    setting() {
-      if (!this.kakaoApiKey) {
-        alert('API Key를 먼저 입력해주세요!')
-        return
-      }
-      this.showKakaoLoginForm = true
-    },
-    handleCloseKakaoForm() {
-      this.showKakaoLoginForm = false
+     handleOpenForm ()  {
+      this.showKakaoLoginForm = true;
     },
 
+    handleCloseForm() {
+      this.showKakaoLoginForm = false;
+    },
+    setting(){
+      alert("기능 구현중")
+    },
     openChatRoom() {
       this.isPopupVisible = true;
     },
@@ -204,10 +228,13 @@ export default defineComponent({
     handleChatRoomSelected(chatRoom) {
       this.selectedChatRoom = chatRoom;
       this.isPopupVisible = false;
+      this.isChatRootSelected = chatRoom != null ? true:false;
+
       
     },
     removeChatRoom() {
       // 채팅방 정보를 초기화하여 다시 선택할 수 있게 함
+      this.isChatRootSelected = false;
       this.selectedChatRoom = null;
       
     }

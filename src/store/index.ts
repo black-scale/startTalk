@@ -28,6 +28,10 @@ export default createStore({
     setLoginState(state, payload: {expiredAt: number, kakaoID: string}){
       if(payload.kakaoID !=""){state.kakaoID = payload.kakaoID;}
       if(payload.expiredAt > -1){state.expiredAt = payload.expiredAt;}
+      if(payload.kakaoID =="" && payload.expiredAt == -1){
+        state.expiredAt = -1;
+        state.kakaoID = "";
+      }
     }
   },
   getters: {

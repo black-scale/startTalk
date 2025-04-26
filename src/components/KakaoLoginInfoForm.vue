@@ -1,4 +1,36 @@
 <!-- components/KakaoLoginInfoForm.vue -->
+
+
+<template>
+  <div class="fixed inset-0 bg-black bg-opacity-40 flex justify-center items-center z-50">
+    <div class="bg-white p-6 rounded-lg shadow-lg w-full max-w-md relative">
+      <button
+        class="absolute top-2 right-2 text-gray-600 hover:text-black"
+        @click="$emit('close')"
+      >
+        ✖
+      </button>
+      <h2 class="text-xl font-bold mb-4 text-black">카카오 로그인 정보 입력</h2>
+      <form @submit.prevent="onSubmit()">
+        <input v-if="showkey" v-model="userKey" type="text" placeholder="User Key" class="text-black border p-2 w-full mb-4" />
+        <input v-if="showID" v-model="userId" type="text" placeholder="Kakao ID" class="text-black border p-2 w-full mb-4" />
+        <h2 v-if="!showID" class="text-lg font-bold text-black">
+           ID: {{getID}} 
+          </h2>
+        <input v-model="userPw" type="password" placeholder="Kakao PW" class="border p-2 w-full mb-4 text-black" />
+        <div class="w-full flex">
+          <button v-if="loginExpired != -1" @click="reLogin()" class="bg-blue-500 text-white px-4 py-2 rounded w-full">재로그인</button>
+          <button v-if="loginExpired != -1" @click="logout()" class="bg-blue-500 text-white px-4 py-2 rounded w-full">로그아웃</button>
+          <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded w-full">저장</button>
+        </div>
+        <p class="text-black" v-if="isLoggingIn">로그인 중입니다. 모바일 카카오톡 인증 요청을 확인해주세요.</p>
+        <p class="text-black" v-if="loginExpired != -1">로그인 유효 기간: {{loginExpiredString}}</p>
+
+      </form>
+    </div>
+  </div>
+</template>
+
 <script  lang="ts">
 import { generateClient } from "aws-amplify/api"
 import type { Schema } from "../../amplify/data/resource"
@@ -17,9 +49,12 @@ export default {
       userId: "",
       userPw: "",
       message:"",     
-      loginExpired: -1
+      isLoggingIn: false,
+      loginExpired: -1,
+      loginExpiredString: ""
     };
   },
+  
   computed:{
     ...mapGetters(['getKey', 'getExpireDate', 'getID'])
     },
@@ -32,9 +67,16 @@ export default {
     this.showID =  this.userID == '' ? true : false
 
     this.loginExpired = this.getExpireDate || -1
+
+    if(this.loginExpired > 0){
+      const date = new Date(this.loginExpired * 1000);
+      this.loginExpiredString = date.toISOString().replace('T', ' ').substring(0, 19);
+    }
+
+    
   },
   methods:{
-    ...mapActions(['updateLoginState']),
+    ...mapActions(['updateLoginState','updateRoom']),
     async onSubmit ()  {
       if (!this.userKey || !this.userId|| this.userPw === null) {
         this.message = '모든 값을 입력해주세요.'
@@ -43,48 +85,36 @@ export default {
       this.login();
     },
     async login(){
-      try {        
+      try {  
+        this.isLoggingIn = true      
           const result = await client.queries.saveKakaoLoginInfo({
             userKey: this.userKey,
               userId: this.userId,
               userPw: this.userPw,
           })
           const parsed = JSON.parse(result.data.toString())
-
+          this.isLoggingIn = false
           // 로그인/ 비밀번호 변경 성공 시 재로그인 시도도
           if(parsed.statusCode == 200 || parsed.statusCode == 201){
-            const loginresult = await client.queries.autoSendServer({
-                userKey: this.userKey,
-                userMessage: '스타트톡 로그인 완료',
-                friendName: 'send_myself',
-            })
 
-            const loginparsed = JSON.parse(loginresult.data.toString())
-            if(loginparsed.statusCode == 200){
-              store.dispatch('messageModel/initSubscription');
-              const body_parsed = JSON.parse(loginparsed.body.toString())
-              const expire = body_parsed.cookieExpiredAt? body_parsed.cookieExpiredAt : -1
-              const id =  body_parsed.kakaoID?  body_parsed.kakaoID : this.userId
-              this.updateLoginState({expiredAt:expire,kakaoID:id})
-              alert("로그인 완료")
-              this.showKey = false;
-              this.showID = false;
-            }
-            else if(parsed.statusCode == 202){
-              alert(loginparsed.body)
-            }
-            else{
-              alert(loginparsed.body)
-              store.dispatch('messageModel/stopSubscription');
-            }
-
+            store.dispatch('messageModel/initSubscription');
+            alert("로그인 완료")
+            this.showKey = false;
+            this.showID = false;
+            this.updateLoginState({expiredAt:-1,kakaoID: this.userKey})
+          }
+          else if(parsed.statusCode == 202){
+            alert(parsed.body)
           }
           else{
             alert(parsed.body)
             store.dispatch('messageModel/stopSubscription');
           }
 
-        } catch (error) {
+        }
+
+
+        catch (error) {
           console.error('Lambda 호출 실패:', error)
           this.message = '저장 실패'
         }
@@ -100,13 +130,14 @@ export default {
       }
       const result = await client.models.kakaoLoginCookie.delete({id: this.userKey})
       
+      this.isLoggingIn = true
       // 로그인 
       const loginresult = await client.queries.autoSendServer({
         userKey: this.userKey,
         userMessage: '스타트톡 로그인 완료',
         friendName: 'send_myself',
       })
-
+      this.isLoggingIn = false
       const loginparsed = JSON.parse(loginresult.data.toString())
       if(loginparsed.statusCode == 200){
         store.dispatch('messageModel/initSubscription');
@@ -114,18 +145,24 @@ export default {
         const expire = body_parsed.cookieExpiredAt? body_parsed.cookieExpiredAt : -1
         const id =  body_parsed.kakaoID?  body_parsed.kakaoID : ""
         this.updateLoginState({expiredAt:expire,kakaoID: id})
+        const date = new Date(expire * 1000);
+        this.loginExpiredString = date.toISOString().replace('T', ' ').substring(0, 19);
         alert("재로그인 완료")
         this.showKey = false;
         this.showID = false;
       }
       else{
         alert("재로그인 실패: " + loginparsed.body)
+        this.logout();
         store.dispatch('messageModel/stopSubscription');
       }
+      
     },
     async logout(){
       const deleteCookieResult = await client.models.kakaoLoginCookie.delete({id: this.userKey})
       const loginResult = await client.models.kakaoLoginInfo.delete({id: this.userKey})
+      this.updateLoginState({expiredAt:-1,kakaoID:""})
+      this.updateRoom({newRoom:"",newRegion:""})
       this.showKey = true;
       this.showID = true;
     }
@@ -136,31 +173,3 @@ export default {
 
 </script>
 
-<template>
-  <div class="fixed inset-0 bg-black bg-opacity-40 flex justify-center items-center z-50">
-    <div class="bg-white p-6 rounded-lg shadow-lg w-full max-w-md relative">
-      <button
-        class="absolute top-2 right-2 text-gray-600 hover:text-black"
-        @click="$emit('close')"
-      >
-        ✖
-      </button>
-      <h2 class="text-xl font-bold mb-4">카카오 로그인 정보 입력</h2>
-      <form @submit.prevent="onSubmit">
-        <input v-if="showkey" v-model="userKey" type="text" placeholder="User Key" class="border p-2 w-full mb-4" />
-        <input v-if="showID" v-model="userId" type="text" placeholder="Kakao ID" class="border p-2 w-full mb-4" />
-        <h2 v-if="!showID" class="text-lg font-bold">
-            {{userId}} 
-          </h2>
-        <input v-model="userPw" type="password" placeholder="Kakao PW" class="border p-2 w-full mb-4" />
-        <div class="w-full flex">
-          <button v-if="loginExpired != -1" onclick="reLogin()" class="bg-blue-500 text-white px-4 py-2 rounded w-full">재로그인</button>
-          <button v-if="loginExpired != -1" onclick="logout()" class="bg-blue-500 text-white px-4 py-2 rounded w-full">로그아웃</button>
-          <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded w-full">저장</button>
-        </div>
-        <p v-if="loginExpired != -1">로그인 유효 기간: {{loginExpired}}</p>
-
-      </form>
-    </div>
-  </div>
-</template>

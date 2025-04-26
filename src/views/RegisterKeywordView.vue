@@ -1,5 +1,6 @@
 <template>
-  <div>
+  <div class="fixed top-0 left-1/2 transform -translate-x-1/2  w-full max-w-md mx-auto bg-white shadow-lg rounded-lg overflow-hidden">
+    <MainHeader/>
     <h2>Register Keyword Entry</h2>
     <form @submit.prevent="submitEntry">
       <div>
@@ -28,6 +29,7 @@
 import { defineComponent, ref } from 'vue'
 import { useStore } from 'vuex'
 import { KeywordEntry, TimeItem } from '../store/modules/keywordModule'
+import MainHeader from '../components/MainHeader.vue';
 
 export default defineComponent({
   name: 'RegisterKeywordEntry',
@@ -35,6 +37,9 @@ export default defineComponent({
     return {
       kakaoApiKey: "",
     };
+  },
+  components:{
+    MainHeader
   },
   setup() {
     const store = useStore()
