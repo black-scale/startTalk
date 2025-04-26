@@ -185,7 +185,7 @@ export const handler: Schema['autoSendServer']["functionHandler"] = async (event
     });
 
     let page: Page = await browser.newPage();   
-    const targetUrl = `http://${SEND_DEFAULT_URL}?key=${encodeURIComponent(userKey)}&message=${encodeURIComponent(userMessage)}`;
+    const targetUrl = `${SEND_DEFAULT_URL}?key=${encodeURIComponent(userKey)}&message=${encodeURIComponent(userMessage)}`;
     // 3. 쿠키가 저장되어 있다면, 페이지에 주입
     if (!storedCookies) {
         //저장된 쿠키가 없을때 로그인창 띄움움\
