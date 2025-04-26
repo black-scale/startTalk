@@ -33,6 +33,9 @@ env.d.ts
 *.tsbuildinfo
 
 # amplify
-.amplify
+.amplify/*
+!.amplify/generated/
+!.amplify/generated/env/
+!.amplify/generated/env/*.ts
 amplify_outputs*
 amplifyconfiguration*
