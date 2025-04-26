@@ -27,7 +27,6 @@ frontend:
       commands:
         - nvm install 18.19.1
         - nvm use 18.19.1
-        - pnpm install --no-frozen-lockfile --ignore-scripts
     build:
       commands:
         - npm install -g pnpm
