@@ -167,6 +167,7 @@ export const handler: Schema['autoSendServer']["functionHandler"] = async (event
   try {
     const { friendName, userKey, userMessage } = event.arguments
     if (!friendName || !userKey || !userMessage) {
+      
       return { statusCode: 400, body: 'friendName, userKey, userMessage 파라미터 필요' };
     }
     console.log(JSON.stringify(process.env));
@@ -197,11 +198,13 @@ export const handler: Schema['autoSendServer']["functionHandler"] = async (event
         // 4. sendDefault 호출 후 공유 피커 팝업 창이 뜨기를 대기
         const popupTarget: Target = await browser.waitForTarget((target: Target) => {
           // 메인 페이지의 target(opener)이면 공유 피커 팝업으로 판단 (단, URL이 'data:,'가 아니어야 함)
+       
           return target.opener() === page.target() && target.url() !== 'data:,';
         });
         const popupPage: Page | null = await popupTarget.page();
         if (!popupPage) {
           console.error("팝업 페이지를 찾지 못했습니다.");
+  
           return {
             statusCode: 500,
             body: "팝업 페이지를 찾지 못했습니다.",
@@ -214,6 +217,7 @@ export const handler: Schema['autoSendServer']["functionHandler"] = async (event
         const credentials = await getLoginInfoFromDynamo(userKey);
         if (!credentials) {
           console.error('자격증명을 가져오지 못했습니다.');
+          await browser.close();
           return {
             statusCode: 403,
             body: JSON.stringify('자격증명을 가져오지 못했습니다.'),
@@ -277,6 +281,7 @@ export const handler: Schema['autoSendServer']["functionHandler"] = async (event
           let friendList = await popupPage.$$(friendListSelector);
           if (friendList.length === 0) {
             console.error("친구 목록을 로드하지 못했습니다. 로그인 상태를 확인하세요.");
+            await browser.close();
             return {
               statusCode: 500,
               body: "친구 목록 로드 실패",
@@ -342,6 +347,7 @@ export const handler: Schema['autoSendServer']["functionHandler"] = async (event
     
           if (!friendFound) {
             console.error(`"${friendName}"를 찾지 못했습니다.`);
+            await browser.close();
             return {
               statusCode: 404,
               body: "수신자 검색 실패",
@@ -363,6 +369,7 @@ export const handler: Schema['autoSendServer']["functionHandler"] = async (event
           console.log("페이지 내용:", content);
         } catch (err) {
           console.error('메시지 전송 UI를 찾지 못했습니다:', err);
+          await browser.close();
           return {
             statusCode: 500,
             body: JSON.stringify('메시지 전송 UI를 찾지 못했습니다.')
@@ -386,6 +393,7 @@ export const handler: Schema['autoSendServer']["functionHandler"] = async (event
         const popupPage: Page | null = await popupTarget.page();
         if (!popupPage) {
           console.error("팝업 페이지를 찾지 못했습니다.");
+          await browser.close();
           return {
             statusCode: 500,
             body: "팝업 페이지를 찾지 못했습니다.",
@@ -441,6 +449,7 @@ export const handler: Schema['autoSendServer']["functionHandler"] = async (event
             console.log("팝업 페이지 내용2:", content1);
             const credentials = await getLoginInfoFromDynamo(userKey);
             if (!credentials) {
+              await browser.close();
               console.error('자격증명을 가져오지 못했습니다.');
                 return {
                 statusCode: 403,
@@ -511,6 +520,7 @@ export const handler: Schema['autoSendServer']["functionHandler"] = async (event
         await popupPage.waitForSelector('div.unit_chat', { timeout: 1200 });
         if (!friendListSelector) {
           console.error("친구 목록을 로드하지 못했습니다. 로그인 상태를 확인하세요.");
+          await browser.close();
           return {
             statusCode: 500,
             body: "친구 목록을 로드하지 못했습니다. 로그인 상태를 확인하세요.",
@@ -576,6 +586,7 @@ export const handler: Schema['autoSendServer']["functionHandler"] = async (event
   
         if (!friendFound) {
           console.error(`"${friendName}"를 찾지 못했습니다.`);
+          await browser.close();
           return {
             statusCode: 404,
             body: "수신자 검색 실패",
@@ -598,11 +609,13 @@ export const handler: Schema['autoSendServer']["functionHandler"] = async (event
     } 
     catch (error) {
       console.error("오류 발생:", error);
+      await browser.close();
       return {
         statusCode: 500,
         body: JSON.stringify(error),
       };
   } 
+  await browser.close();
   return {
     statusCode: 200,
     body: JSON.stringify({message: 'Auto share executed successfully',
