@@ -191,11 +191,12 @@ export default {
         this.showID = false
       }
       this.showLoginConfirm=false
+    },
+    handleLoginClose(){
+      this.showLoginConfirm = false
     }
   },
-  handleLoginClose(){
-    this.showLoginConfirm = false
-  }
+
 };
 
 
