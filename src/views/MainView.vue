@@ -17,7 +17,8 @@
       <div v-if="isWatingLoggedIn" class="mb-4">
         <h2 class="text-lg font-bold">서버에 로그인 중입니다</h2>
       </div>
-
+      <!-- 만약 appsync에서 null 리턴 했을때 -->
+      <LoginTimeoutConfirmModal v-if="showLoginConfirm" :user-key="kakaoApiKey"    @login-success="handleLoginSuccess" @close="handleLoginClose" /> 
       <!-- 선택된 채팅방이 있을 때 -->
       <div v-if="isChatRootSelected && isLoggedIn" class="flex items-center justify-between p-4 bg-blue-200 rounded-lg">
         <div class="flex items-center space-x-4">
@@ -62,7 +63,7 @@
 
 <script lang="ts">
 import SelectChatRoom from '../components/SelectChatRoom.vue';
-import KakaoLoginInfoForm from '../components/KakaoLoginInfoForm.vue'
+import LoginTimeoutConfirmModal from '../components/LoginTimeoutConfirmModal.vue';
 import MessageView from './MessageView.vue';
 import { generateClient } from "aws-amplify/api"
 import { type Schema } from "../../amplify/data/resource"
@@ -81,9 +82,9 @@ declare global {
 export default defineComponent({
   components: {
     SelectChatRoom,
-    KakaoLoginInfoForm,
     MessageView,
-    MainHeader
+    MainHeader,
+    LoginTimeoutConfirmModal
   },  
   data() {
     return {
@@ -96,6 +97,7 @@ export default defineComponent({
       showKakaoLoginForm: false,
       isWatingLoggedIn:false,
       isLoggedIn:false,
+      showLoginConfirm:false
       
     };
   },
@@ -183,31 +185,39 @@ export default defineComponent({
         })
       this.isWatingLoggedIn = false;
       console.log(loginresult)
-      const parsed = JSON.parse(loginresult.data.toString())
-      this.setKakaoKey(this.kakaoApiKey);
-      //const parsed = {'statusCode': 200, 'body':{message: 'test', cookieExpiredAt:1748121715, kakaoID:'sju0924'}}
-      if(parsed.statusCode == 200){
-        store.dispatch('messageModel/initSubscription');
-        alert("로그인 완료")
-        const body_parsed = JSON.parse(parsed.body.toString())
-        const expire = body_parsed.cookieExpiredAt? body_parsed.cookieExpiredAt : -1
-        const id =  body_parsed.kakaoID?  body_parsed.kakaoID : ""
-        this.isLoggedIn = true;
-        this.updateLoginState({expiredAt:expire, kakaoID: id})
-      }
-      else if(parsed.statusCode == 403){
-        alert("카카오톡 ID와 비밀번호를 입력해주세요")
-        this.handleOpenForm()
-        
+
+      if(!loginresult.data){
+        if(loginresult.errors[0].errorType == "Lambda:ExecutionTimeoutException"){
+          this.showLoginConfirm = true
+        }
       }
       else{
-        alert(parsed.body)
-        this.updateKey("")
-        store.dispatch('messageModel/stopSubscription');
+        const parsed = JSON.parse(loginresult.data.toString())
+        this.setKakaoKey(this.kakaoApiKey);
+        //const parsed = {'statusCode': 200, 'body':{message: 'test', cookieExpiredAt:1748121715, kakaoID:'sju0924'}}
+        if(parsed.statusCode == 200){
+          store.dispatch('messageModel/initSubscription');
+          alert("로그인 완료")
+          const body_parsed = JSON.parse(parsed.body.toString())
+          const expire = body_parsed.cookieExpiredAt? body_parsed.cookieExpiredAt : -1
+          let id =  body_parsed.kakaoID?  body_parsed.kakaoID : ""
+          if(id == ""){
+            const { data: infoRes } = await client.models.kakaoLoginInfo.get({ id: this.kakaoApiKey });
+            id = infoRes?.userId;
+          }
+          this.isLoggedIn = true;
+          this.updateLoginState({expiredAt:expire, kakaoID: id})
+        }
+        else if(parsed.statusCode == 403){
+          alert("카카오톡 ID와 비밀번호를 입력해주세요")
+          this.handleOpenForm()          
+        }
+        else{
+          alert(parsed.body)
+          this.updateKey("")
+          store.dispatch('messageModel/stopSubscription');
+        } 
       }
-      
-
-
     },
      handleOpenForm ()  {
       this.showKakaoLoginForm = true;
@@ -237,7 +247,21 @@ export default defineComponent({
       this.isChatRootSelected = false;
       this.selectedChatRoom = null;
       
+    },
+    handleLoginSuccess(payload: { expiredAt: number; kakaoID: string }) {
+      this.loginExpired = payload.expiredAt
+      if(this.loginExpired > 0){
+        store.dispatch('messageModel/initSubscription');
+      }
+      this.isLoggedIn = true;
+      this.showLoginConfirm=false
+
+    },
+    handleLoginClose(){
+      store.dispatch('messageModel/stopSubscription');
+      this.showLoginConfirm = false
     }
+    
   }
 });
 </script>

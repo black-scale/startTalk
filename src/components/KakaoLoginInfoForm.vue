@@ -25,8 +25,9 @@
         </div>
         <p class="text-black" v-if="isLoggingIn">로그인 중입니다. 모바일 카카오톡 인증 요청을 확인해주세요.</p>
         <p class="text-black" v-if="loginExpired != -1">로그인 유효 기간: {{loginExpiredString}}</p>
-
       </form>
+      <LoginTimeoutConfirmModal v-if="showLoginConfirm" :user-key="userKey" @login-success="handleLoginSuccess" @close="handleLoginClose" /> 
+      
     </div>
   </div>
 </template>
@@ -35,6 +36,7 @@
 import { generateClient } from "aws-amplify/api"
 import type { Schema } from "../../amplify/data/resource"
 import { mapActions, mapGetters } from 'vuex'
+import LoginTimeoutConfirmModal from "./LoginTimeoutConfirmModal.vue";
 import store from '../store';
 
 const client = generateClient<Schema>()
@@ -51,8 +53,13 @@ export default {
       message:"",     
       isLoggingIn: false,
       loginExpired: -1,
-      loginExpiredString: ""
+      loginExpiredString: "",
+      showLoginConfirm:false
     };
+  },
+  emits: ['close'],
+  components:{
+    LoginTimeoutConfirmModal
   },
   
   computed:{
@@ -88,7 +95,7 @@ export default {
       try {  
         this.isLoggingIn = true      
           const result = await client.queries.saveKakaoLoginInfo({
-            userKey: this.userKey,
+              userKey: this.userKey,
               userId: this.userId,
               userPw: this.userPw,
           })
@@ -96,12 +103,11 @@ export default {
           this.isLoggingIn = false
           // 로그인/ 비밀번호 변경 성공 시 재로그인 시도도
           if(parsed.statusCode == 200 || parsed.statusCode == 201){
-
-            store.dispatch('messageModel/initSubscription');
-            alert("로그인 완료")
+            alert("로그인 정보 등록 완료")
             this.showKey = false;
             this.showID = false;
-            this.updateLoginState({expiredAt:-1,kakaoID: this.userKey})
+            this.updateLoginState({expiredAt:-1,kakaoID: this.userId})
+            this.$emit('close')
           }
           else if(parsed.statusCode == 202){
             alert(parsed.body)
@@ -138,25 +144,34 @@ export default {
         friendName: 'send_myself',
       })
       this.isLoggingIn = false
-      const loginparsed = JSON.parse(loginresult.data.toString())
-      if(loginparsed.statusCode == 200){
-        store.dispatch('messageModel/initSubscription');
-        const body_parsed = JSON.parse(loginparsed.body.toString())
-        const expire = body_parsed.cookieExpiredAt? body_parsed.cookieExpiredAt : -1
-        const id =  body_parsed.kakaoID?  body_parsed.kakaoID : ""
-        this.updateLoginState({expiredAt:expire,kakaoID: id})
-        const date = new Date(expire * 1000);
-        this.loginExpiredString = date.toISOString().replace('T', ' ').substring(0, 19);
-        alert("재로그인 완료")
-        this.showKey = false;
-        this.showID = false;
+
+      //Timeout으로 null data 왔을때(Appsync는 30초 제한 ㅠ)
+      if(!loginresult.data){
+        if(loginresult.errors[0].errorType == "Lambda:ExecutionTimeoutException"){
+          this.showLoginConfirm = true
+        }
       }
       else{
-        alert("재로그인 실패: " + loginparsed.body)
-        this.logout();
-        store.dispatch('messageModel/stopSubscription');
-      }
-      
+        //정상 응답 왔을때
+        const loginparsed = JSON.parse(loginresult.data.toString()) 
+        if(loginparsed.statusCode == 200){
+          store.dispatch('messageModel/initSubscription');
+          const body_parsed = JSON.parse(loginparsed.body.toString())
+          const expire = body_parsed.cookieExpiredAt? body_parsed.cookieExpiredAt : -1
+          const id =  body_parsed.kakaoID?  body_parsed.kakaoID : ""
+          this.updateLoginState({expiredAt:expire,kakaoID: id})
+          const date = new Date(expire * 1000);
+          this.loginExpiredString = date.toISOString().replace('T', ' ').substring(0, 19);
+          alert("재로그인 완료")
+          this.showKey = false;
+          this.showID = false;        
+        }
+        else{
+          alert("재로그인 실패: " + loginparsed.body)
+          this.logout();
+          store.dispatch('messageModel/stopSubscription');
+        }
+      }    
     },
     async logout(){
       const deleteCookieResult = await client.models.kakaoLoginCookie.delete({id: this.userKey})
@@ -165,7 +180,21 @@ export default {
       this.updateRoom({newRoom:"",newRegion:""})
       this.showKey = true;
       this.showID = true;
+    },
+    handleLoginSuccess(payload: { expiredAt: number; kakaoID: string }) {
+      this.loginExpired = payload.expiredAt
+      if(this.loginExpired > 0){
+        const date = new Date(this.loginExpired * 1000);
+        this.loginExpiredString = date.toISOString().replace('T', ' ').substring(0, 19);
+      }
+      if(payload.kakaoID){
+        this.showID = false
+      }
+      this.showLoginConfirm=false
     }
+  },
+  handleLoginClose(){
+    this.showLoginConfirm = false
   }
 };
 

@@ -12,10 +12,13 @@
               d="M12 8c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 10c-4.4 0-8-3.6-8-8s3.6-8 8-8 8 3.6 8 8-3.6 8-8 8zm0-14c-3.3 0-6 2.7-6 6s2.7 6 6 6 6-2.7 6-6-2.7-6-6-6z"/>
       </svg>
     </button>
+    <!-- 부모 컴포넌트에서 호출 -->
     <KakaoLoginInfoForm
       v-if="showKakaoLoginForm"
       @close="handleCloseKakaoForm"
-/>    <KakaoLoginInfoForm
+    />    
+<!-- 헤더에서 직접 호출 -->
+      <KakaoLoginInfoForm
       v-if="showForm"
       @close="closeform"
 />

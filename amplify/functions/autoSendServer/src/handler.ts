@@ -25,8 +25,6 @@ const SEND_DEFAULT_URL = env.SEND_DEFAULT_URL || 'https://localhost:5173/AutoSen
  */
 async function getCookiesFromDynamo(userId: string): Promise<Cookie[] | null> {
   const { data: response } = await client.models.kakaoLoginCookie.get({id: userId })
-  const { data: allresponse } = await client.models.kakaoLoginCookie.list()
-  console.log(client.models,allresponse )
   console.log(response)
 
   if (!response || !response.cookieData) {
@@ -232,6 +230,9 @@ export const handler: Schema['autoSendServer']["functionHandler"] = async (event
         console.log(`조회된 자격증명: ID=${_id}, PW=${_pw}`);
 
         userID = _id;
+
+        const content_login = await popupPage.content();
+        console.log("로그인 페이지 내용:", content_login);
   
         await popupPage.type('#loginId--1', _id, { delay: 50 });
         await popupPage.type('#password--2', _pw, { delay: 50 });
@@ -242,13 +243,14 @@ export const handler: Schema['autoSendServer']["functionHandler"] = async (event
 
   
         // 5. 로그인 버튼 클릭
-        await popupPage.click('button.btn_g.highlight.submit');
-  
-       // 6. 로그인 후 페이지 전환 또는 에러 메시지 감지를 기다림
-        const navigationPromise = popupPage.waitForNavigation({ waitUntil: 'networkidle2', timeout: 5000 }).then(() => 'navigated');
-        const errorPromise = popupPage.waitForSelector('p.desc_error', { timeout: 500 }).then(() => 'error');
+        await popupPage.click('button.btn_g.highlight.submit',{ delay: 50 });
 
-        const result = await Promise.race([navigationPromise, errorPromise]);
+        const result = await Promise.race([
+          // navigation 이 끝나면 'nav' 리턴
+          popupPage.waitForNavigation({ waitUntil: 'networkidle2', timeout: 10000 }).then(() => 'nav'),
+          // 에러 메시지가 나타나면 'error' 리턴
+          popupPage.waitForSelector('p.desc_error', { timeout: 10000 }).then(() => 'error')
+        ]);
 
         // 아이디/비밀번호 틀렸을경우
         if (result === 'error') {
