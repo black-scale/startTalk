@@ -426,6 +426,7 @@ export const handler: Schema['autoSendServer']["functionHandler"] = async (event
         let errorElement = null
         let iter = 0;
         while(true){
+          
           errorElement = await popupPage.$('p.desc_error');
           friendListSelector = await popupPage.$(friendDiv);
           iter += 1;
@@ -490,8 +491,10 @@ export const handler: Schema['autoSendServer']["functionHandler"] = async (event
   
         
               // 5. 로그인 버튼 클릭
-              await popupPage.click('button.btn_g.highlight.submit',{delay: 50})
-              await new Promise(resolve => setTimeout(resolve, 500));  
+              await Promise.all([
+                popupPage.click('button.btn_g.highlight.submit', { delay: 50 }),
+                popupPage.waitForNavigation({ waitUntil: 'networkidle2', timeout: 10000 })
+              ]);
               
               
             }
