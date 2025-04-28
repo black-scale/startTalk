@@ -26,7 +26,7 @@ const client = generateClient<Schema>()
         }
     },
     methods: {
-        ...mapActions(['updateLoginState']),
+        ...mapActions(['updateLoginState', 'updateKey']),
         async onConfirmYes() {
             this.showLoginConfirm = false;
             // 예 눌렀을 때 로직
@@ -45,6 +45,7 @@ const client = generateClient<Schema>()
                 }
                 // 이후 로직: Vuex에 저장하고 화면 갱신하기
                 this.updateLoginState({expiredAt:expireAt,kakaoID:kakaoID})
+                this.updateKey(this.userKey)
                 
                 // 부모에게 emit
                 this.$emit('login-success', { expireAt, kakaoID })

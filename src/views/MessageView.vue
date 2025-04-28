@@ -10,21 +10,21 @@
           class="text-blue-500 font-medium bg-blue-100 px-3 py-1 rounded"
           @click="changeMode('auto')"
         >
-          {{ mode === 'auto' ? '작동중: 자동 전송' : '자동 전송' }}
+          {{ local_mode === 'auto' ? '작동중: 자동 전송' : '자동 전송' }}
         </button>
 
         <button
           class="text-blue-500 font-medium bg-blue-100 px-3 py-1 rounded"
           @click="changeMode('manual')"
         >
-          {{ mode === 'manual' ? '작동중: 수동 전송' : '수동 전송' }}
+          {{ local_mode === 'manual' ? '작동중: 수동 전송' : '수동 전송' }}
         </button>
 
         <button
           class="text-blue-500 font-medium bg-blue-100 px-3 py-1 rounded"
           @click="changeMode('off')"
         >
-          {{ mode === 'off' ? '작동중: 정지' : '정지' }}
+          {{ local_mode === 'off' ? '작동중: 정지' : '정지' }}
         </button>
       </div>
     </div>
@@ -93,7 +93,8 @@ const client = generateClient<Schema>()
 export default {
   data(){
     return{
-      isSendingMap: {} as Record<number, boolean>
+      isSendingMap: {} as Record<number, boolean>,
+      local_mode = 'off'
     }
     
   },
@@ -101,7 +102,6 @@ export default {
   computed: {
     ...mapState("messageModel", {
       allMessageEntries: (state:messageEntriesState)  => state.entries,
-      mode: (state:messageEntriesState) => state.mode
     }),
     
   },
@@ -110,9 +110,9 @@ export default {
     ...mapActions('messageModel', ['updateMessageEntry','setMode','sendMessage','clearMessage']),
     
     changeMode(mode:string) {
-      this.mode = mode;
-      this.setMode(this.mode);
-      console.log(`모드 변경됨: ${mode}`);
+      this.local_mode = mode;
+      this.setMode(mode);
+      console.log(`모드 변경됨: ${this.local_mode}`);
     },
     async send(entry: messageEntry, index:number) {
       if (this.isSendingMap[index] || entry.isSend) return;

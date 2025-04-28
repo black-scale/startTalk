@@ -539,8 +539,6 @@ export const handler: Schema['autoSendServer']["functionHandler"] = async (event
         expire = await updateCookiesInDynamo(userKey, allCookies);     
         // 타임아웃 등 에러가 발생한 경우 실행할 대체 작업
         
-
-        await popupPage.waitForSelector('div.unit_chat', { timeout: 1200 });
         if (!friendListSelector) {
           console.error("친구 목록을 로드하지 못했습니다. 로그인 상태를 확인하세요.");
           if(browser){

@@ -83,7 +83,7 @@ export default {
     
   },
   methods:{
-    ...mapActions(['updateLoginState','updateRoom']),
+    ...mapActions(['updateLoginState','updateRoom','updateKey']),
     async onSubmit ()  {
       if (!this.userKey || !this.userId|| this.userPw === null) {
         this.message = '모든 값을 입력해주세요.'
@@ -160,6 +160,7 @@ export default {
           const expire = body_parsed.cookieExpiredAt? body_parsed.cookieExpiredAt : -1
           const id =  body_parsed.kakaoID?  body_parsed.kakaoID : ""
           this.updateLoginState({expiredAt:expire,kakaoID: id})
+          this.updateKey(this.userKey)
           const date = new Date(expire * 1000);
           this.loginExpiredString = date.toISOString().replace('T', ' ').substring(0, 19);
           alert("재로그인 완료")
