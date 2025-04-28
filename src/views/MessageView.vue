@@ -94,7 +94,7 @@ export default {
   data(){
     return{
       isSendingMap: {} as Record<number, boolean>,
-      local_mode = 'off'
+      local_mode : 'off'
     }
     
   },
