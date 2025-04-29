@@ -23,7 +23,7 @@
       <div v-if="isChatRootSelected && isLoggedIn" class="flex items-center justify-between p-4 bg-blue-200 rounded-lg">
         <div class="flex items-center space-x-4">
           <h2 class="text-lg font-bold">
-            {{ selectedChatRoom.region }} {{ selectedChatRoom.name }}
+            {{ selectedChatRoom.region }} {{ selectedChatRoom.displayName }}
           </h2>
           <button 
             @click="removeChatRoom" 
