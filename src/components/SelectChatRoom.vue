@@ -27,7 +27,7 @@
                     class="bg-gray-200 p-2 rounded cursor-pointer hover:bg-gray-300 mb-1 w-40 h-10 text-center flex items-center justify-center"
                     @click="selectRoom(store)"
                 >
-                    {{ store.region }} {{ store.name }}
+                    {{ store.region }} {{ store.displayName }}
                 </div>
             </div>
         </div>
@@ -43,23 +43,23 @@
             activeRegion: "전체",
             // '전체' 항목 없이 각 지역별로 데이터 정의
             stores: [
-                { region: "강남구", name: "가게이름3" },
-                { region: "강남구", name: "가게이름4" },
-                { region: "강남구", name: "가게이름5" },
-                { region: "강남구", name: "가게이름6" },
-                { region: "강남구", name: "가게이름7" },
-                { region: "강남구", name: "가게이름8" },
-                { region: "인천", name: "가게이름1" },
-                { region: "인천", name: "가게이름2" },
-                { region: "수원", name: "손지언" },
-                { region: "수원", name: "가게이름3" },
-                { region: "수원", name: "가게이름4" },
-                { region: "수원", name: "가게이름5" },
-                { region: "수원", name: "가게이름6" },
-                { region: "수원", name: "가게이름7" },
-                { region: "수원", name: "가게이름8" },
-                { region: "동작구", name: "가게이름1" },
-                { region: "동작구", name: "가게이름2" }       
+                { region: "강남구", name: "달토", displayName:"달리는 토끼" },
+                { region: "강남구", name: "유앤미", displayName:"You & Me"  },
+                { region: "강남구", name: "CNN", displayName:"CNN"  },
+                { region: "강남구", name: "사라", displayName:"사라있네"  },
+                { region: "강남구", name: "퍼펙트", displayName:"퍼펙트"  },
+                { region: "강남구", name: "가게이름8", displayName:""  },
+                { region: "인천", name: "가게이름1", displayName:""  },
+                { region: "인천", name: "가게이름2", displayName:""  },
+                { region: "수원", name: "손지언", displayName:"테스트"  },
+                { region: "수원", name: "가게이름3", displayName:""  },
+                { region: "수원", name: "가게이름4", displayName:""  },
+                { region: "수원", name: "가게이름5", displayName:""  },
+                { region: "수원", name: "가게이름6", displayName:""  },
+                { region: "수원", name: "가게이름7", displayName:""  },
+                { region: "수원", name: "가게이름8", displayName:""  },
+                { region: "서초구", name: "가게이름1", displayName:""  },
+                { region: "서초구", name: "가게이름2", displayName:""  }       
             ]
         };
     },
