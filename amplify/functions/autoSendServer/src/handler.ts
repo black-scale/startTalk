@@ -444,11 +444,15 @@ export const handler: Schema['autoSendServer']["functionHandler"] = async (event
             let content1_1 = await popupPage.content();
             console.log('계정 선택을 위한한 페이지로 전환 완료' , popupPage.url());
             console.log("팝업 페이지 내용2:", content1_1);
-            await popupPage.evaluate(() => {
+            await popupPage.evaluate(async () => {
               const firstAccount = document.querySelector('.list_easy li .wrap_profile');
               console.log("first Account: ", firstAccount)
               if (firstAccount instanceof HTMLElement) {
-                firstAccount.click();
+                await Promise.all([
+                  firstAccount.click(),
+                  popupPage.waitForNavigation({ waitUntil: 'networkidle2', timeout: 10000 })
+                ]);
+                
               }
             });          
           }
@@ -470,11 +474,11 @@ export const handler: Schema['autoSendServer']["functionHandler"] = async (event
                 await browser.close();
               }   
               console.error('자격증명을 가져오지 못했습니다.');
-                return {
+              return {
                 statusCode: 403,
                 body: JSON.stringify('자격증명을 가져오지 못했습니다.'),
-                };
-              }
+              };
+            }
             const _id = credentials.userID;
             const _pw = credentials.userPW;
             console.log(`조회된 자격증명: ID=${_id}, PW=${_pw}`);
