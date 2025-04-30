@@ -30,48 +30,50 @@
     </div>
     <!-- 메시지 컨텐츠 -->
   <div class="w-full p-4 bg-gray-100">
-    <div
-      v-for="(entry, index) in allMessageEntries"
-      :key="index"
-      class="w-full bg-gray-100 p-4 rounded shadow space-y-2"
-    >
-      <!-- 원본 메시지 -->
-      <div class="text-sm text-gray-600 flex justify-between">
-        <div><span class="font-bold text-gray-700">감지</span> {{ entry.content }}</div>
-        <div class="text-xs text-gray-400">{{ entry.timestamp }}</div>
-      </div>
+    <template v-for="(entry, index) in allMessageEntries" :key="index">
+      <div
+        v-if="local_room == entry.room"
+        :key="index"
+        class="w-full bg-gray-100 p-4 rounded shadow space-y-2"
+      >
+        <!-- 원본 메시지 -->
+        <div class="text-sm text-gray-600 flex justify-between">
+          <div><span class="font-bold text-gray-700">감지</span> {{ entry.content }}</div>
+          <div class="text-xs text-gray-400">{{ entry.timestamp }}</div>
+        </div>
 
-      <!-- 전송 메시지 -->
-      <div class="text-sm text-gray-800">
-        <span class="font-bold text-gray-700">전송</span> {{ entry.contentToSend }}
-      </div>
+        <!-- 전송 메시지 -->
+        <div class="text-sm text-gray-800">
+          <span class="font-bold text-gray-700">전송</span> {{ entry.contentToSend }}
+        </div>
 
-      <!-- 전송 버튼 -->
-      <div class="flex justify-end">
-        <button v-if="entry.isSend" 
-          class="bg-gray-500 text-white text-sm px-4 py-1 rounded">
-          전송됨
-        </button>
-        <button v-else-if="isSendingMap[index]"
-          class="bg-blue-500 text-white text-sm px-4 py-1 rounded"
-          @click="send(entry, index)"
-          :disabled="entry.isSend"
-        >
-           전송중
-        </button>
-        <button v-else
-          class="bg-blue-500 text-white text-sm px-4 py-1 rounded"
-          @click="send(entry, index)"
-          :disabled="entry.isSend"
-        >
-           전송
-        </button>
+        <!-- 전송 버튼 -->
+        <div class="flex justify-end">
+          <button v-if="entry.isSend" 
+            class="bg-gray-500 text-white text-sm px-4 py-1 rounded">
+            전송됨
+          </button>
+          <button v-else-if="isSendingMap[index]"
+            class="bg-gray-500 text-white text-sm px-4 py-1 rounded"
+            :disabled="entry.isSend"
+          >
+            전송중
+          </button>
+          <button v-else
+            class="bg-blue-500 text-white text-sm px-4 py-1 rounded"
+            @click="send(entry, index)"
+            :disabled="entry.isSend"
+          >
+            전송
+          </button>
+        </div>
+        <!-- 전송 메시지 -->
+        <div v-if="entry.error" class="text-sm text-red-800" >
+            <span class="font-bold text-gray-700">에러</span> {{ entry.errorMessage }}
+        </div>
       </div>
-      <!-- 전송 메시지 -->
-      <div v-if="entry.error" class="text-sm text-red-800" >
-          <span class="font-bold text-gray-700">에러</span> {{ entry.errorMessage }}
-      </div>
-    </div>
+    </template>
+   
   </div>
 </div>
 
@@ -94,7 +96,8 @@ export default {
   data(){
     return{
       isSendingMap: {} as Record<number, boolean>,
-      local_mode : 'off'
+      local_mode : 'off',
+      local_room : ""
     }
     
   },
@@ -103,9 +106,13 @@ export default {
     ...mapState("messageModel", {
       allMessageEntries: (state:messageEntriesState)  => state.entries,
     }),
+    ...mapGetters(['getRoom'])
     
   },
-
+  created(){
+    this.local_room = this.getRoom.name
+    console.log(this.getRoom,this.local_room)
+  },
   methods: {
     ...mapActions('messageModel', ['updateMessageEntry','setMode','sendMessage','clearMessage']),
     

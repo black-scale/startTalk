@@ -108,7 +108,7 @@ export default defineComponent({
   onBeforeRouteEnter(to: any, from: any, next) {
       this.kakaoApiKey = this.getKey || ''
       this.isLoggedIn = this.getExpireDate > -1 ? true:false
-      this.isChatRootSelected = this.getRoom.selectedRoom ? true:false
+      this.isChatRootSelected = this.getRoom.name ? true:false
       this.selectedChatRoom = this.getRoom ? this.getRoom : null
 
       next()
@@ -118,7 +118,7 @@ export default defineComponent({
     onBeforeRouteUpdate(to : any, from:any , next) {
       this.kakaoApiKey = this.getKey || ''
       this.isLoggedIn = this.getExpireDate > -1 ? true:false
-      this.isChatRootSelected = this.getRoom.selectedRoom != "" ? true:false
+      this.isChatRootSelected = this.getRoom.name != "" ? true:false
       this.selectedChatRoom = this.getRoom ? this.getRoom : null
       next()
     },

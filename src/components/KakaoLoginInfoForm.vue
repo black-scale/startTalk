@@ -178,7 +178,7 @@ export default {
       const deleteCookieResult = await client.models.kakaoLoginCookie.delete({id: this.userKey})
       const loginResult = await client.models.kakaoLoginInfo.delete({id: this.userKey})
       this.updateLoginState({expiredAt:-1,kakaoID:""})
-      this.updateRoom({newRoom:"",newRegion:""})
+      this.updateRoom({newRoom:"",newRegion:"", newDisplay:""})
       this.showKey = true;
       this.showID = true;
     },

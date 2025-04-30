@@ -97,7 +97,8 @@
             console.log(room.name, room.region)
             this.updateRoom( {
                 newRoom: room.name,
-                newRegion: room.region
+                newRegion: room.region,
+                newDisplay: room.displayName
                 });
             
             this.$emit("chat-room-selected", room);
