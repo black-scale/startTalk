@@ -6,6 +6,7 @@ import createPersistedState from 'vuex-persistedstate'
 export interface roomEntry {
   newRoom: string,
   newRegion: string
+  newDisplay: string
 }
 
 export default createStore({
@@ -14,6 +15,7 @@ export default createStore({
     devKey: '',
     selectedRegion:'',
     selectedRoom:'',
+    selectedRoomDisplay:'',
     kakaoID:'',
     expiredAt:-1
   },
@@ -24,6 +26,7 @@ export default createStore({
     setRoom(state, payload: roomEntry){
       state.selectedRegion = payload.newRegion;
       state.selectedRoom = payload.newRoom;
+      state.selectedRoomDisplay = payload.newDisplay;
     },
     setLoginState(state, payload: {expiredAt: number, kakaoID: string}){
       if(payload.kakaoID !=""){state.kakaoID = payload.kakaoID;}
@@ -40,7 +43,8 @@ export default createStore({
     getRoom: (state) => {
       return {
         region: state.selectedRegion,
-        name: state.selectedRoom
+        name: state.selectedRoom,
+        display_name:state.selectedRoomDisplay
       }
     },
     getID:(state) => state.kakaoID,
@@ -70,7 +74,7 @@ export default createStore({
     }),
     createPersistedState({
       key: 'chatRoom',
-      paths: ['selectedRegion','selectedRoom']
+      paths: ['selectedRegion','selectedRoom','selectedRoomDisplay']
     }),
     // keywordModel 모듈 상태를 별도의 localStorage 키에 저장
     createPersistedState({

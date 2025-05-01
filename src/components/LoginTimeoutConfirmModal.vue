@@ -3,8 +3,8 @@
   <div class="modal-backdrop">
         <div class="modal-overlay">
           <p class="text-black">로그인 메시지가 왔나요?</p>
-          <button @click="onConfirmYes">예</button>
-          <button @click="onConfirmNo">아니오</button>
+          <button  class="bg-blue-500 text-white px-4 py-2 rounded w-full" @click="onConfirmYes">예</button>
+          <button  class="bg-gray-500 text-white px-4 py-2 rounded w-full" @click="onConfirmNo">아니오</button>
         </div>
     </div>
 
@@ -26,7 +26,7 @@ const client = generateClient<Schema>()
         }
     },
     methods: {
-        ...mapActions(['updateLoginState']),
+        ...mapActions(['updateLoginState', 'updateKey']),
         async onConfirmYes() {
             this.showLoginConfirm = false;
             // 예 눌렀을 때 로직
@@ -45,6 +45,7 @@ const client = generateClient<Schema>()
                 }
                 // 이후 로직: Vuex에 저장하고 화면 갱신하기
                 this.updateLoginState({expiredAt:expireAt,kakaoID:kakaoID})
+                this.updateKey(this.userKey)
                 
                 // 부모에게 emit
                 this.$emit('login-success', { expireAt, kakaoID })

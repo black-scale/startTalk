@@ -25,7 +25,6 @@ const SEND_DEFAULT_URL = env.SEND_DEFAULT_URL || 'https://localhost:5173/AutoSen
  */
 async function getCookiesFromDynamo(userId: string): Promise<Cookie[] | null> {
   const { data: response } = await client.models.kakaoLoginCookie.get({id: userId })
-  console.log(response)
 
   if (!response || !response.cookieData) {
     return null;
@@ -40,7 +39,6 @@ async function getCookiesFromDynamo(userId: string): Promise<Cookie[] | null> {
 }
 
 async function getLoginInfoFromDynamo(userKey: string): Promise<{ userID: string; userPW: string } | null> {  
-  console.log(env.AMPLIFY_DATA_GRAPHQL_ENDPOINT)
   try {
     const { data: response } = await client.models.kakaoLoginInfo.get({id: userKey })
     if (!response) {
@@ -168,7 +166,6 @@ export const handler: Schema['autoSendServer']["functionHandler"] = async (event
       
       return { statusCode: 400, body: 'friendName, userKey, userMessage 파라미터 필요' };
     }
-    console.log(JSON.stringify(process.env));
 
     // 1. DynamoDB에서 쿠키 정보 조회
     const storedCookies = await getCookiesFromDynamo(userKey);
@@ -230,6 +227,13 @@ export const handler: Schema['autoSendServer']["functionHandler"] = async (event
         console.log(`조회된 자격증명: ID=${_id}, PW=${_pw}`);
 
         userID = _id;
+
+        await Promise.all([
+          popupPage.waitForSelector('#saveSignedIn--4'),
+          popupPage.waitForSelector('#loginId--1'),
+          popupPage.waitForSelector('#password--2'),
+          popupPage.waitForSelector('button.btn_g.highlight.submit'),
+        ]);
 
         const content_login = await popupPage.content();
         console.log("로그인 페이지 내용:", content_login);
@@ -426,6 +430,7 @@ export const handler: Schema['autoSendServer']["functionHandler"] = async (event
         let errorElement = null
         let iter = 0;
         while(true){
+          
           errorElement = await popupPage.$('p.desc_error');
           friendListSelector = await popupPage.$(friendDiv);
           iter += 1;
@@ -433,7 +438,7 @@ export const handler: Schema['autoSendServer']["functionHandler"] = async (event
             break
           }
           
-          let loginButton = await popupPage.$$('#saveSignedIn--4');
+          let loginButton = await popupPage.$('#__next');
           let loginEasyExists = await popupPage.$('.login_easy');
           let loginCertify = await popupPage.$('div.login_certify')
           
@@ -443,13 +448,13 @@ export const handler: Schema['autoSendServer']["functionHandler"] = async (event
             let content1_1 = await popupPage.content();
             console.log('계정 선택을 위한한 페이지로 전환 완료' , popupPage.url());
             console.log("팝업 페이지 내용2:", content1_1);
-            await popupPage.evaluate(() => {
-              const firstAccount = document.querySelector('.list_easy li .wrap_profile');
-              console.log("first Account: ", firstAccount)
-              if (firstAccount instanceof HTMLElement) {
-                firstAccount.click();
-              }
-            });          
+            const firstAccount = await popupPage.$('.list_easy li .wrap_profile');
+            if (firstAccount) {
+              await Promise.all([
+                popupPage.waitForNavigation({ waitUntil: 'networkidle2', timeout: 10000 }),
+                firstAccount.click(),
+              ]);
+            } 
           }
             //2차 인증증일때때
           else if(loginCertify){               
@@ -463,24 +468,33 @@ export const handler: Schema['autoSendServer']["functionHandler"] = async (event
             let content1 = await popupPage.content();
             console.log('로그인을 위한 페이지로 전환 완료' , popupPage.url());
             console.log("팝업 페이지 내용2:", content1);
+
+
             const credentials = await getLoginInfoFromDynamo(userKey);
             if (!credentials) {
               if(browser){
                 await browser.close();
               }   
               console.error('자격증명을 가져오지 못했습니다.');
-                return {
+              return {
                 statusCode: 403,
                 body: JSON.stringify('자격증명을 가져오지 못했습니다.'),
-                };
-              }
+              };
+            }
             const _id = credentials.userID;
             const _pw = credentials.userPW;
             console.log(`조회된 자격증명: ID=${_id}, PW=${_pw}`);
               
             userID = _id;
           
-            try{
+            try{              
+              await Promise.all([
+                popupPage.waitForSelector('#saveSignedIn--4'),
+                popupPage.waitForSelector('#loginId--1'),
+                popupPage.waitForSelector('#password--2'),
+                popupPage.waitForSelector('button.btn_g.highlight.submit'),
+              ]);
+
               await popupPage.type('#loginId--1', _id, { delay: 50 });
               await popupPage.type('#password--2', _pw, { delay: 50 });
               
@@ -490,10 +504,10 @@ export const handler: Schema['autoSendServer']["functionHandler"] = async (event
   
         
               // 5. 로그인 버튼 클릭
-              await popupPage.click('button.btn_g.highlight.submit',{delay: 50})
-              await new Promise(resolve => setTimeout(resolve, 500));  
-              
-              
+              await Promise.all([
+                popupPage.click('button.btn_g.highlight.submit', { delay: 50 }),
+                popupPage.waitForNavigation({ waitUntil: 'networkidle2', timeout: 10000 })
+              ]);             
             }
             catch(e){
               console.log("no login element error: ",e )
@@ -536,8 +550,6 @@ export const handler: Schema['autoSendServer']["functionHandler"] = async (event
         expire = await updateCookiesInDynamo(userKey, allCookies);     
         // 타임아웃 등 에러가 발생한 경우 실행할 대체 작업
         
-
-        await popupPage.waitForSelector('div.unit_chat', { timeout: 1200 });
         if (!friendListSelector) {
           console.error("친구 목록을 로드하지 못했습니다. 로그인 상태를 확인하세요.");
           if(browser){

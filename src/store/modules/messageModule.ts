@@ -92,12 +92,12 @@ const messageModule: Module<messageEntriesState, any> = {
     async sendMessage({ },entry:messageEntry) {
       const client = generateClient<Schema>();
       const apiKey = JSON.parse(localStorage.getItem('loginState')).devKey
-      console.log( apiKey , entry.contentToSend, entry.room)
+      console.log( apiKey , entry.contentToSend, entry.receiver)
       try {
         const res = await client.queries.autoSendServer({
           userKey: apiKey || '',
           userMessage: entry.contentToSend,
-          friendName: entry.room
+          friendName: entry.receiver
         });
 
         const result = JSON.parse(res.data.toString());
