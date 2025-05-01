@@ -135,6 +135,7 @@ export default {
           return;
       }
       const result = await client.models.kakaoLoginCookie.delete({id: this.userKey})
+      this.updateLoginState({expiredAt:-1,kakaoID:""})
       
       this.isLoggingIn = true
       // 로그인 
