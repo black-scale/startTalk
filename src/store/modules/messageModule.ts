@@ -89,7 +89,7 @@ const messageModule: Module<messageEntriesState, any> = {
     },
     // @ input: message: receiver에게 보낼 메시지 내용, receiver: 수신자 이름(카카오톡 닉네임과 일치해야 함함)
     // @ output: 메시지 전송 결과
-    async sendMessage({ },entry:messageEntry) {
+    async sendMessage({ rootGetters, dispatch },entry:messageEntry) {
       const client = generateClient<Schema>();
       const apiKey = JSON.parse(localStorage.getItem('loginState')).devKey
       console.log( apiKey , entry.contentToSend, entry.receiver)
@@ -103,6 +103,21 @@ const messageModule: Module<messageEntriesState, any> = {
         const result = JSON.parse(res.data.toString());
         if (result.statusCode === 200) {
           entry.isSend = true;
+          // 메시지 전송 성공 시, 관련 키워드들의 last_send 업데이트
+          const allKeywordEntries = rootGetters['keywordModel/allKeywordEntries'];
+          const matchedEntries = allKeywordEntries.filter(
+            (k: KeywordEntry) =>
+              k.room === entry.room && entry.contentToSend.includes(k.keyword)
+          );
+
+          const now = new Date().toISOString().replace('T', ' ').substring(0, 19);; // 현재 시간 포맷
+
+          matchedEntries.forEach((k: KeywordEntry) => {
+            k.last_send = now;
+            // 변경된 키워드를 상태에 반영
+            dispatch('keywordModel/updateKeywordEntry', k, { root: true });
+          });
+
         } else {
           entry.error = true;
           entry.errorMessage = result.body || '전송 실패';
