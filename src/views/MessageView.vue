@@ -29,7 +29,7 @@
       </div>
     </div>
     <!-- 메시지 컨텐츠 -->
-  <div class="w-full p-4 bg-gray-100 overflow-y-auto">
+  <div class="w-full p-4 bg-gray-100  overflow-y-auto">
     <template v-for="(entry, index) in allMessageEntries" :key="index">
       <div
         v-if="local_room == entry.room"
