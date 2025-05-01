@@ -23,6 +23,7 @@
           <button v-if="loginExpired != -1" @click="logout()" class="bg-blue-500 text-white px-4 py-2 rounded w-full">로그아웃</button>
           <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded w-full">저장</button>
         </div>
+        <p class="text-black" v-if="isSetLoginInfo">로그인 중입니다.</p>
         <p class="text-black" v-if="isLoggingIn">로그인 중입니다. 모바일 카카오톡 인증 요청을 확인해주세요.</p>
         <p class="text-black" v-if="loginExpired != -1">로그인 유효 기간: {{loginExpiredString}}</p>
       </form>
@@ -52,6 +53,7 @@ export default {
       userPw: "",
       message:"",     
       isLoggingIn: false,
+      isSetLoginInfo: false,
       loginExpired: -1,
       loginExpiredString: "",
       showLoginConfirm:false
@@ -93,14 +95,18 @@ export default {
     },
     async login(){
       try {  
-        this.isLoggingIn = true      
+        this.isSetLoginInfo = true      
+        let idtoLogin = this.userId  
+        if(!this.showID){
+          idtoLogin = this.getID
+          }
           const result = await client.queries.saveKakaoLoginInfo({
               userKey: this.userKey,
-              userId: this.userId,
+              userId: idtoLogin,
               userPw: this.userPw,
           })
           const parsed = JSON.parse(result.data.toString())
-          this.isLoggingIn = false
+          this.isSetLoginInfo = false
           // 로그인/ 비밀번호 변경 성공 시 재로그인 시도도
           if(parsed.statusCode == 200 || parsed.statusCode == 201){
             alert("로그인 정보 등록 완료")
@@ -183,10 +189,12 @@ export default {
       this.showID = true;
     },
     handleLoginSuccess(payload: { expiredAt: number; kakaoID: string }) {
+      console.log(payload)
       this.loginExpired = payload.expiredAt
       if(this.loginExpired > 0){
-        const date = new Date(this.loginExpired * 1000);
+        const date = new Date(payload.expiredAt * 1000);
         this.loginExpiredString = date.toISOString().replace('T', ' ').substring(0, 19);
+        alert("재로그인 완료")
       }
       if(payload.kakaoID){
         this.showID = false
