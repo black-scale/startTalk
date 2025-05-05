@@ -257,15 +257,15 @@ export const handler: Schema['autoSendServer']["functionHandler"] = async (event
 
   
         // 5. 로그인 버튼 클릭
-        await popupPage.click('button.btn_g.highlight.submit',{ delay: 50 });
+        await Promise.all([
+          popupPage.click('button.btn_g.highlight.submit', { delay: 50 }),
+          popupPage.waitForNavigation({ waitUntil: 'networkidle2', timeout: 10000 })
+        ]); 
 
-        const result = await Promise.race([
-          // 에러 메시지가 나타나면 'error' 리턴
-          popupPage.waitForSelector('p.desc_error', { timeout: 1000 }).then(() => 'error')
-        ]);
+        const errorElement = await popupPage.$('p.desc_error');
 
         // 아이디/비밀번호 틀렸을경우
-        if (result === 'error') {
+        if (errorElement) {
           // 에러 메시지가 감지된 경우, 에러 텍스트를 추출하여 로그와 응답으로 반환합니다.
           const errorElement = await popupPage.$('p.desc_error');
           const errorText = await popupPage.evaluate((el:any)=> el.innerText, errorElement);
