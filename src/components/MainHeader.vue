@@ -56,7 +56,7 @@ export default defineComponent({
 
     return {
       isRoot,
-      goBack,
+      goBack
     }
   },
   props: {
@@ -112,14 +112,13 @@ export default defineComponent({
         this.$emit('close-kakao-form') // 🔥 부모한테 "닫아줘!" 요청
       },
       handleLogout(){
-        const router = useRouter()
         if(!this.isRoot){
-          router.push({
+          this.$router.push({
             path: "/",
           });
         }
         else{
-          router.go(0);
+          this.$router.go(0);
         }
 
       }
