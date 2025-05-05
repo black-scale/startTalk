@@ -112,13 +112,14 @@ export default defineComponent({
         this.$emit('close-kakao-form') // 🔥 부모한테 "닫아줘!" 요청
       },
       handleLogout(){
+        const router = useRouter()
         if(!this.isRoot){
-          this.router.push({
+          router.push({
             path: "/",
           });
         }
         else{
-          this.router.go(0);
+          router.go(0);
         }
 
       }
