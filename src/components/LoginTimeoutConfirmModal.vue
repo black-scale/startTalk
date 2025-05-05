@@ -40,7 +40,7 @@ const client = generateClient<Schema>()
                 const kakaoID = infoRes?.userId;
 
                 if(!cookieRes || !infoRes){
-                alert("로그인에 실패하였습니다. Key를 확인해주세요")
+                alert("로그인에 실패하였습니다. 로그인 정보를 확인하거나 잠시 후 다시 시도해주세요")
                 return;
                 }
                 // 이후 로직: Vuex에 저장하고 화면 갱신하기

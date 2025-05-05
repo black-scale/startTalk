@@ -260,10 +260,8 @@ export const handler: Schema['autoSendServer']["functionHandler"] = async (event
         await popupPage.click('button.btn_g.highlight.submit',{ delay: 50 });
 
         const result = await Promise.race([
-          // navigation 이 끝나면 'nav' 리턴
-          popupPage.waitForNavigation({ waitUntil: 'networkidle2', timeout: 10000 }).then(() => 'nav'),
           // 에러 메시지가 나타나면 'error' 리턴
-          popupPage.waitForSelector('p.desc_error', { timeout: 10000 }).then(() => 'error')
+          popupPage.waitForSelector('p.desc_error', { timeout: 1000 }).then(() => 'error')
         ]);
 
         // 아이디/비밀번호 틀렸을경우
@@ -282,10 +280,12 @@ export const handler: Schema['autoSendServer']["functionHandler"] = async (event
         }
         
         console.log('로그인 및 페이지 전환 완료' , popupPage.url());
+        const content_cert = await popupPage.content();
+        console.log("페이지 내용:", content_cert);
         await popupPage.waitForNavigation({ waitUntil: 'networkidle2', timeout: 300000 });
 
     
-        console.log('로그인 및 페이지 전환 완료' , popupPage.url());
+        console.log('인증 및 페이지 전환 완료' , popupPage.url());
         const content = await popupPage.content();
         console.log("페이지 내용:", content);
         // 브라우저의 기본 컨텍스트에서 쿠키를 가져옵니다.
