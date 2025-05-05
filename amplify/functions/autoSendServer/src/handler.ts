@@ -228,8 +228,9 @@ export const handler: Schema['autoSendServer']["functionHandler"] = async (event
 
         userID = _id;
 
+        
+
         await Promise.all([
-          popupPage.waitForSelector('#saveSignedIn--4'),
           popupPage.waitForSelector('#loginId--1'),
           popupPage.waitForSelector('#password--2'),
           popupPage.waitForSelector('button.btn_g.highlight.submit'),
@@ -243,7 +244,16 @@ export const handler: Schema['autoSendServer']["functionHandler"] = async (event
         
   
         // 4. "간편로그인 정보 저장" 체크박스를 체크하고 값 변경
-        await popupPage.click('#saveSignedIn--4', { delay: 10 });
+        const selectors = ['#saveSignedIn--4', '#saveSignedIn--3'];
+
+        for (const selector of selectors) {
+          const checkbox = await popupPage.$(selector);
+          if(checkbox){
+            checkbox.click();
+          }
+          
+        }
+        
 
   
         // 5. 로그인 버튼 클릭
@@ -489,7 +499,6 @@ export const handler: Schema['autoSendServer']["functionHandler"] = async (event
           
             try{              
               await Promise.all([
-                popupPage.waitForSelector('#saveSignedIn--4'),
                 popupPage.waitForSelector('#loginId--1'),
                 popupPage.waitForSelector('#password--2'),
                 popupPage.waitForSelector('button.btn_g.highlight.submit'),
@@ -500,7 +509,15 @@ export const handler: Schema['autoSendServer']["functionHandler"] = async (event
               
         
               // 4. "간편로그인 정보 저장" 체크박스를 체크하고 값 변경
-              await popupPage.click('#saveSignedIn--4', { delay: 10 });
+              const selectors = ['#saveSignedIn--4', '#saveSignedIn--3'];
+
+              for (const selector of selectors) {
+                const checkbox = await popupPage.$(selector);
+                if(checkbox){
+                  checkbox.click();
+                }
+              }
+              
   
         
               // 5. 로그인 버튼 클릭
