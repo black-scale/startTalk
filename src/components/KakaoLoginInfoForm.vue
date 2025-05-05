@@ -188,6 +188,8 @@ export default {
       this.updateRoom({newRoom:"",newRegion:"", newDisplay:""})
       this.showKey = true;
       this.showID = true;
+      this.loginExpired = -1
+      this.$emit('close')
     },
     handleLoginSuccess(payload: { expiredAt: number; kakaoID: string }) {
       console.log(payload)
