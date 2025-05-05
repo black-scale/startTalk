@@ -38,7 +38,7 @@ const schema = a.schema({
       room: a.string(),   
       
       createdAt: a.string(),    // 세션 생성 시각
-      expireAt: a.string(),
+      expireAt: a.integer(),
       updatedAt: a.datetime()
       
     })
