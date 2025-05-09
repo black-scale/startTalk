@@ -272,7 +272,16 @@ export const handler: Schema['autoSendServer']["functionHandler"] = async (event
         }
         
         console.log('로그인 및 페이지 전환 완료' , popupPage.url());
-        await popupPage.waitForNavigation({ waitUntil: 'networkidle2', timeout: 300000 });
+        try{
+          await popupPage.waitForNavigation({ waitUntil: 'networkidle2', timeout: 300000 });
+        }
+        catch{
+          return {
+            statusCode: 500,
+            body: "추가 인증 시간이 초과되었습니다.",
+          };
+        }
+       
 
     
         console.log('로그인 및 페이지 전환 완료' , popupPage.url());
@@ -461,7 +470,15 @@ export const handler: Schema['autoSendServer']["functionHandler"] = async (event
             let content1 = await popupPage.content();
             console.log('2차 인증을 위한 페이지로 전환 완료' , popupPage.url());
             console.log("팝업 페이지 내용2:", content1);
-            await popupPage.waitForNavigation({ waitUntil: 'networkidle2', timeout: 300000 });  
+            try{
+              await popupPage.waitForNavigation({ waitUntil: 'networkidle2', timeout: 300000 });
+            }
+            catch{
+              return {
+                statusCode: 500,
+                body: "추가 인증 시간이 초과되었습니다.",
+              };
+            } 
           }
           //로그인부터 다시 시작하는 창이 뜰때때
           else if(loginButton){           
