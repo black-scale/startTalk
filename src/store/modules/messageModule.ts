@@ -103,13 +103,15 @@ const messageModule: Module<messageEntriesState, any> = {
         const result = JSON.parse(res.data.toString());
         if (result.statusCode === 200) {
           entry.isSend = true;
+          entry.error = false;
+          entry.errorMessage = "";
           // 메시지 전송 성공 시, 관련 키워드들의 last_send 업데이트
           const allKeywordEntries = rootGetters['keywordModel/allKeywordEntries'];
           const matchedEntries = allKeywordEntries.filter(
             (k: KeywordEntry) =>
               k.room === entry.room && entry.contentToSend.includes(k.keyword)
           );
-
+          
           const now = new Date().toISOString().replace('T', ' ').substring(0, 19);; // 현재 시간 포맷
 
           matchedEntries.forEach((k: KeywordEntry) => {

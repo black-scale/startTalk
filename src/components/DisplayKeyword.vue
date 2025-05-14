@@ -16,7 +16,7 @@
 </template>
 
 <script lang="ts">
-import { mapState, mapActions } from "vuex"
+import { mapState, mapActions,mapGetters } from "vuex"
 import { KeywordEntry, KeywordEntriesState } from '../store/modules/keywordModule'
 
 export default {
@@ -52,6 +52,7 @@ export default {
     ...mapState("keywordModel", {
       keywordEntries: (state:KeywordEntriesState)  => state.entries
     }),
+    ...mapGetters(['getRoom']),
     filteredKeywords() {
       if (!this.searchQuery) {
         return this.localKeywords;

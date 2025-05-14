@@ -228,8 +228,9 @@ export const handler: Schema['autoSendServer']["functionHandler"] = async (event
 
         userID = _id;
 
+        
+
         await Promise.all([
-          popupPage.waitForSelector('#saveSignedIn--4'),
           popupPage.waitForSelector('#loginId--1'),
           popupPage.waitForSelector('#password--2'),
           popupPage.waitForSelector('button.btn_g.highlight.submit'),
@@ -243,21 +244,28 @@ export const handler: Schema['autoSendServer']["functionHandler"] = async (event
         
   
         // 4. "간편로그인 정보 저장" 체크박스를 체크하고 값 변경
-        await popupPage.click('#saveSignedIn--4', { delay: 10 });
+        const selectors = ['#saveSignedIn--4', '#saveSignedIn--3'];
+
+        for (const selector of selectors) {
+          const checkbox = await popupPage.$(selector);
+          if(checkbox){
+            checkbox.click();
+          }
+          
+        }
+        
 
   
         // 5. 로그인 버튼 클릭
-        await popupPage.click('button.btn_g.highlight.submit',{ delay: 50 });
+        await Promise.all([
+          popupPage.click('button.btn_g.highlight.submit', { delay: 50 }),
+          popupPage.waitForNavigation({ waitUntil: 'networkidle2', timeout: 10000 })
+        ]); 
 
-        const result = await Promise.race([
-          // navigation 이 끝나면 'nav' 리턴
-          popupPage.waitForNavigation({ waitUntil: 'networkidle2', timeout: 10000 }).then(() => 'nav'),
-          // 에러 메시지가 나타나면 'error' 리턴
-          popupPage.waitForSelector('p.desc_error', { timeout: 10000 }).then(() => 'error')
-        ]);
+        const errorElement = await popupPage.$('p.desc_error');
 
         // 아이디/비밀번호 틀렸을경우
-        if (result === 'error') {
+        if (errorElement) {
           // 에러 메시지가 감지된 경우, 에러 텍스트를 추출하여 로그와 응답으로 반환합니다.
           const errorElement = await popupPage.$('p.desc_error');
           const errorText = await popupPage.evaluate((el:any)=> el.innerText, errorElement);
@@ -284,7 +292,7 @@ export const handler: Schema['autoSendServer']["functionHandler"] = async (event
        
 
     
-        console.log('로그인 및 페이지 전환 완료' , popupPage.url());
+        console.log('인증 및 페이지 전환 완료' , popupPage.url());
         const content = await popupPage.content();
         console.log("페이지 내용:", content);
         // 브라우저의 기본 컨텍스트에서 쿠키를 가져옵니다.
@@ -506,7 +514,6 @@ export const handler: Schema['autoSendServer']["functionHandler"] = async (event
           
             try{              
               await Promise.all([
-                popupPage.waitForSelector('#saveSignedIn--4'),
                 popupPage.waitForSelector('#loginId--1'),
                 popupPage.waitForSelector('#password--2'),
                 popupPage.waitForSelector('button.btn_g.highlight.submit'),
@@ -517,7 +524,15 @@ export const handler: Schema['autoSendServer']["functionHandler"] = async (event
               
         
               // 4. "간편로그인 정보 저장" 체크박스를 체크하고 값 변경
-              await popupPage.click('#saveSignedIn--4', { delay: 10 });
+              const selectors = ['#saveSignedIn--4', '#saveSignedIn--3'];
+
+              for (const selector of selectors) {
+                const checkbox = await popupPage.$(selector);
+                if(checkbox){
+                  checkbox.click();
+                }
+              }
+              
   
         
               // 5. 로그인 버튼 클릭

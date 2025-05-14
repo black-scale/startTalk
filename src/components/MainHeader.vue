@@ -16,11 +16,13 @@
     <KakaoLoginInfoForm
       v-if="showKakaoLoginForm"
       @close="handleCloseKakaoForm"
+      @logout="handleLogout"
     />    
 <!-- 헤더에서 직접 호출 -->
       <KakaoLoginInfoForm
       v-if="showForm"
       @close="closeform"
+      @logout="handleLogout"
 />
   </div>    
 </template>
@@ -34,6 +36,7 @@ import { useRouter, useRoute } from 'vue-router'
 
 
 export default defineComponent({
+  
     components: {
       KakaoLoginInfoForm,
     },  
@@ -53,7 +56,7 @@ export default defineComponent({
 
     return {
       isRoot,
-      goBack,
+      goBack
     }
   },
   props: {
@@ -108,6 +111,17 @@ export default defineComponent({
       handleCloseKakaoForm() {
         this.$emit('close-kakao-form') // 🔥 부모한테 "닫아줘!" 요청
       },
+      handleLogout(){
+        if(!this.isRoot){
+          this.$router.push({
+            path: "/",
+          });
+        }
+        else{
+          this.$router.go(0);
+        }
+
+      }
     }
   });
   </script>

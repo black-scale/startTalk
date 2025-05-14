@@ -59,7 +59,7 @@ export default {
       showLoginConfirm:false
     };
   },
-  emits: ['close'],
+  emits: ['close','logout'],
   components:{
     LoginTimeoutConfirmModal
   },
@@ -188,6 +188,8 @@ export default {
       this.updateRoom({newRoom:"",newRegion:"", newDisplay:""})
       this.showKey = true;
       this.showID = true;
+      this.loginExpired = -1
+      this.$emit('logout')
     },
     handleLoginSuccess(payload: { expiredAt: number; kakaoID: string }) {
       console.log(payload)
