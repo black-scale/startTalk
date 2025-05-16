@@ -100,29 +100,38 @@ const messageModule: Module<messageEntriesState, any> = {
           friendName: entry.receiver
         });
 
-        const result = JSON.parse(res.data.toString());
-        if (result.statusCode === 200) {
-          entry.isSend = true;
-          entry.error = false;
-          entry.errorMessage = "";
-          // 메시지 전송 성공 시, 관련 키워드들의 last_send 업데이트
-          const allKeywordEntries = rootGetters['keywordModel/allKeywordEntries'];
-          const matchedEntries = allKeywordEntries.filter(
-            (k: KeywordEntry) =>
-              k.room === entry.room && entry.contentToSend.includes(k.keyword)
-          );
-          
-          const now = new Date().toISOString().replace('T', ' ').substring(0, 19);; // 현재 시간 포맷
+        if(res.data){
+          const result = JSON.parse(res.data.toString());
+        
 
-          matchedEntries.forEach((k: KeywordEntry) => {
-            k.last_send = now;
-            // 변경된 키워드를 상태에 반영
-            dispatch('keywordModel/updateKeywordEntry', k, { root: true });
-          });
+          if (result.statusCode === 200) {
+            entry.isSend = true;
+            entry.error = false;
+            entry.errorMessage = "";
+            // 메시지 전송 성공 시, 관련 키워드들의 last_send 업데이트
+            const allKeywordEntries = rootGetters['keywordModel/allKeywordEntries'];
+            const matchedEntries = allKeywordEntries.filter(
+              (k: KeywordEntry) =>
+                k.room === entry.room && entry.contentToSend.includes(k.keyword)
+            );
+            
+            const now = new Date().toISOString().replace('T', ' ').substring(0, 19);; // 현재 시간 포맷
 
-        } else {
-          entry.error = true;
-          entry.errorMessage = result.body || '전송 실패';
+            matchedEntries.forEach((k: KeywordEntry) => {
+              k.last_send = now;
+              // 변경된 키워드를 상태에 반영
+              dispatch('keywordModel/updateKeywordEntry', k, { root: true });
+            });
+
+          } else {
+            entry.error = true;
+            entry.errorMessage = result.body || '전송 실패';
+          }
+        }
+        else{
+           const result = JSON.parse(res.errors.toString());
+           entry.error = true;
+            entry.errorMessage = result[0].message || '예외 발생';
         }
       } catch (err) {
         entry.error = true;
