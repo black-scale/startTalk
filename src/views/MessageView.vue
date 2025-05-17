@@ -1,6 +1,6 @@
 <template>
 <!-- 상단 버튼 영역 -->
-<div class="w-full flex flex-col ">
+<div class="w-full flex flex-col">
   <div class="whitespace-nowrap space-x-2 overflow-x-auto ">
       <div class="flex justify-between items-center border-b space-x-2">
         <button @click="$router.push('/')" class="text-blue-500 font-medium bg-white">&lt; 뒤로가기</button>
@@ -29,7 +29,7 @@
       </div>
     </div>
     <!-- 메시지 컨텐츠 -->
-  <div class="w-full p-4 bg-gray-100  overflow-y-auto">
+  <div class="p-4 bg-gray-100 overflow-y-auto" style="height:80vh">
     <template v-for="(entry, index) in allMessageEntries" :key="index">
       <div
         v-if="local_room == entry.room"
