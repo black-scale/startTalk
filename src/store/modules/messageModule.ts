@@ -129,9 +129,8 @@ const messageModule: Module<messageEntriesState, any> = {
           }
         }
         else{
-           const result = JSON.parse(res.errors.toString());
            entry.error = true;
-            entry.errorMessage = result[0].message || '예외 발생';
+           entry.errorMessage = res.errors.toString()|| '예외 발생';
         }
       } catch (err) {
         entry.error = true;
