@@ -29,7 +29,11 @@
 import { defineComponent, ref } from 'vue'
 import { useStore } from 'vuex'
 import { KeywordEntry, TimeItem } from '../store/modules/keywordModule'
+import { generateClient } from "aws-amplify/api"
+import type { Schema } from "../../amplify/data/resource"
 import MainHeader from '../components/MainHeader.vue';
+
+const client = generateClient<Schema>()
 
 export default defineComponent({
   name: 'RegisterKeywordEntry',
@@ -55,16 +59,55 @@ export default defineComponent({
       setTime.value.splice(index, 1)
     }
 
-    const submitEntry = () => {
-      const entry: KeywordEntry = {
-        room: store.state.selectedRoom,
-        keyword: keyword.value,
-        receiver: receiver.value,
-        set_time: setTime. value,
-        last_send: null
+    const submitEntry = async () => {
+
+      const _room = store.state.selectedRoom
+      const _keyword = keyword.value
+      const _receiver =  receiver.value
+      const _set_time =  JSON.stringify(setTime.value)
+      const _last_send =  null
+      const _userKey = store.state.devKey
+
+      
+      try {
+        // 1. 먼저 기존 데이터 조회
+        const existing = await client.models.KeywordInfo.get({ keyword: _keyword, room: _room, userKey: _userKey });
+        console.log(existing.data)
+        if (existing.data) {
+          // 2. 있으면 update
+          const result = await client.models.KeywordInfo.update({
+              room: _room,
+              keyword: _keyword,
+              receiver: _receiver,
+              set_time: _set_time,
+              last_send:_last_send,
+              userKey: _userKey
+          })                    
+
+          if(!result.data){
+            console.log(result.errors[0])
+            return;
+          }
+        } else {
+          // 3. 없으면 create
+            const result = await client.models.KeywordInfo.create({
+              room: _room,
+              keyword: _keyword,
+              receiver: _receiver,
+              set_time: _set_time,
+              last_send:_last_send,
+              userKey: _userKey
+          })                     
+
+          if(!result.data){
+            console.log(result.errors[0])
+            return;
+          }
+        }
+      } catch (error) {
+        console.error("create or update failed", error);
       }
-      store.dispatch('keywordModel/addKeywordEntry', entry)
-      // 폼 초기화
+     
       keyword.value = ''
       receiver.value = ''
       setTime.value = []

@@ -12,9 +12,30 @@ const backend = defineBackend({
   data,
   autoSendServer,
   saveKakaoLoginInfo,
-  startTalkSender
+  startTalkSender,
+  
 });
 
+
+
+const bucketArn = "arn:aws:s3:::starttalk-model-introspection";
+const objectArn = "arn:aws:s3:::starttalk-model-introspection/*";
+const autoSendServerFunction = backend.autoSendServer.resources.lambda
+const s3AccessPolicy = new Policy(Stack.of(autoSendServerFunction), "SchemaS3AccessPolicy", {
+  statements: [
+    new PolicyStatement({
+      effect: Effect.ALLOW,
+      actions: ["s3:ListBucket"],
+      resources: [bucketArn],
+    }),
+    new PolicyStatement({
+      effect: Effect.ALLOW,
+      actions: ["s3:GetObject"],
+      resources: [objectArn],
+    }),
+  ],
+});
+backend.autoSendServer.resources.lambda.role?.attachInlinePolicy(s3AccessPolicy);
 
 const startTalkMessageTable = backend.data.resources.tables["startTalkMessage"];
 const policy = new Policy(

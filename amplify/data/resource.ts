@@ -1,6 +1,7 @@
 import { type ClientSchema, a, defineData,   } from "@aws-amplify/backend";
 import { saveKakaoLoginInfo } from "../functions/saveKakaoLoginInfo/resource"
 import { autoSendServer } from "../functions/autoSendServer/resource"
+import { startTalkSender } from "../functions/startTalkSender/resource";
 
 
 /*== STEP 1 ===============================================================
@@ -43,10 +44,33 @@ const schema = a.schema({
       
     })
     .authorization((allow) => [allow.publicApiKey()])
-  
-    
-    
     ,
+
+    PushInfo: a
+     .model({
+      userKey: a.string().required(),
+      deviceId: a.string().required(),
+      endpoint: a.string().required(),
+      keys: a.string().required(),
+    })
+    .authorization((allow) => [allow.publicApiKey()])
+    ,
+    KeywordInfo: a
+    .model({
+      keyword: a.string().required(),
+      room: a.string().required(),
+      userKey: a.string().required(),
+      set_time: a.json(),
+      receiver: a.string().required(),
+      last_send: a.datetime(),
+    })
+    .identifier(["keyword", "room", "userKey"]) // ✅ 각 userKey마다 개별 항목 허용
+    .secondaryIndexes(index => [
+      index("keyword"), index("room") // ✅ keyword+room으로 모든 userKey 조회 가능
+    ])
+    .authorization((allow) => [allow.publicApiKey()])
+    ,
+  
     saveKakaoLoginInfo:a 
     .query()
     .arguments({
@@ -69,8 +93,18 @@ const schema = a.schema({
     .handler(a.handler.function(autoSendServer))
     .authorization((allow) => [allow.publicApiKey()]),
 
-      
+    startTalkSender:a 
+    .query()
+    .arguments({
+      userKey: a.string().required(),
+      message: a.string(),
+    })
+    .returns(a.json())
+    .handler(a.handler.function(startTalkSender))
+    .authorization((allow) => [allow.publicApiKey()]),
 
+
+     
 })
 .authorization(allow => [allow.resource(saveKakaoLoginInfo).to(['mutate', 'query']), allow.resource(autoSendServer).to(['mutate', 'query'])])
 ;
