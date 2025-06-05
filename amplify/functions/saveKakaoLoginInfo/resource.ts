@@ -8,7 +8,7 @@ export const saveKakaoLoginInfo = defineFunction({
   entry: './src/handler.ts',
   environment: {
     API_ENDPOINT: process.env.API_ENDPOINT! ,
-    API_KEY: secret('API_KEY') || '',
+    API_KEY: secret('API_KEY')!,
     SEND_DEFAULT_URL: process.env.SEND_DEFAULT_URL!,
     AMPLIFY_DATA_DEFAULT_NAME: process.env.AMPLIFY_DATA_DEFAULT_NAME!,
     AMPLIFY_DATA_MODEL_INTROSPECTION_SCHEMA_KEY: process.env.AMPLIFY_DATA_MODEL_INTROSPECTION_SCHEMA_KEY!,

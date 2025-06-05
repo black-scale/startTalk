@@ -106,7 +106,7 @@ const schema = a.schema({
 
      
 })
-.authorization(allow => [allow.resource(saveKakaoLoginInfo).to(['mutate', 'query']), allow.resource(autoSendServer).to(['mutate', 'query'])])
+.authorization(allow => [allow.resource(saveKakaoLoginInfo).to(['mutate', 'query']), allow.resource(autoSendServer).to(['mutate', 'query']), allow.resource(startTalkSender).to(['mutate', 'query'])])
 ;
 
 export type Schema = ClientSchema<typeof schema>;

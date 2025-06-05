@@ -688,8 +688,8 @@ export const handler: Schema['autoSendServer']["functionHandler"] = async (event
       };
   } 
   if(browser){
-            await browser.close();
-}
+      await browser.close();
+  }
   return {
     statusCode: 200,
     body: JSON.stringify({message: 'Auto share executed successfully',
