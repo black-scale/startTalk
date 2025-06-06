@@ -4,5 +4,11 @@
       "Action": ["dynamodb:GetItem",
                   "dynamodb:PutItem"],
       "Resource": "arn:aws:dynamodb:*:*:table/kakaoLoginInfo-*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": ["dynamodb:GetItem",
+                  "dynamodb:PutItem"],
+      "Resource": "arn:aws:dynamodb:*:*:table/kakaoLoginInfo-*"
     }
   ]

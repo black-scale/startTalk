@@ -40,5 +40,5 @@ env.d.ts
 !.amplify/generated/env/*.ts
 amplify_outputs*
 amplifyconfiguration*
-
 /node_modules
+amplify/functions/**/src/package-lock.json

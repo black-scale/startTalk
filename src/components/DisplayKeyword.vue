@@ -18,6 +18,10 @@
 <script lang="ts">
 import { mapState, mapActions,mapGetters } from "vuex"
 import { KeywordEntry, KeywordEntriesState } from '../store/modules/keywordModule'
+import { generateClient } from "aws-amplify/api"
+import type { Schema } from "../../amplify/data/resource"
+
+const client = generateClient<Schema>()
 
 export default {
   namespaced: true,
@@ -44,15 +48,28 @@ export default {
     }
   },
 
-  created(){
+  async created(){
     this.local_room = this.getRoom.name
+    const dev_key = this.getKey
+
+    // 2. GSI(room) 기준으로 먼저 조회
+    const result = await client.models.KeywordInfo.list({
+      filter: {
+        room: { eq: this.local_room },
+        userKey: { eq: dev_key }
+      }
+    });
+
+    this.localKeywords = result.data.map((entry: any) => ({
+      ...entry,
+      checked: false,
+      last_send: entry.last_send ?? '없음'
+    }));
+
   },
    computed: {
     // Vuex에서 원본 키워드 데이터를 읽어옴
-    ...mapState("keywordModel", {
-      keywordEntries: (state:KeywordEntriesState)  => state.entries
-    }),
-    ...mapGetters(['getRoom']),
+    ...mapGetters(['getRoom','getKey']),
     filteredKeywords() {
       if (!this.searchQuery) {
         return this.localKeywords;
@@ -69,22 +86,7 @@ export default {
       this.localKeywords.every((entry: KeywordEntry & { checked: boolean }) => entry.checked === true)
     }
   },
-
-
-  watch: {
-    // Vuex의 데이터가 업데이트 될 때 로컬 데이터도 갱신
-    keywordEntries(newEntries) {
-      if (newEntries) {
-        this.localKeywords = newEntries.map((entry: KeywordEntry) => ({
-          ...entry,
-          checked: false
-        }));
-      }
-    }
-  },
    methods: {
-    ...mapActions("keywordModel", ["removeKeywordEntry"]),
-
     // 전체 선택/해제
     toggleAll() {
       const allChecked = this.localKeywords.every((entry: KeywordEntry & { checked: boolean }) => entry.checked === true)
@@ -94,9 +96,14 @@ export default {
       });
     },
     // 삭제 버튼 클릭 시 로컬과 Vuex에서 모두 삭제 처리
-    handleRemoveKeyword(index : number) {
-      // Vuex 스토어에서 삭제
-      this.removeKeywordEntry(index);
+    async handleRemoveKeyword(index : number) {
+      // 스토어에서 삭제
+      const dev_key = this.getKey
+      await client.models.KeywordInfo.delete({
+        keyword: this.localKeywords[index].keyword,
+        room: this.local_room,
+        userKey: dev_key,
+      });
       // 로컬 배열에서 삭제
       this.localKeywords.splice(index, 1);
     }

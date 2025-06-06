@@ -67,7 +67,7 @@ export default {
   computed:{
     ...mapGetters(['getKey', 'getExpireDate', 'getID'])
     },
-  created() {
+  async created() {
     // 컴포넌트 생성 시점에 getter로 가져온 값을 localKey에 할당
     this.userKey = this.getKey || ''    
     this.showkey = this.userKey == '' ? true: false;
@@ -80,6 +80,16 @@ export default {
     if(this.loginExpired > 0){
       const date = new Date(this.loginExpired * 1000);
       this.loginExpiredString = date.toISOString().replace('T', ' ').substring(0, 19);
+    }
+    else{
+      if(this.userID && this.userKey){
+         const result = await client.models.kakaoLoginCookie.get({
+              id: this.userKey
+          })
+          this.loginExpired = result.data.expireAt
+          const date = new Date(this.loginExpired * 1000);
+          this.loginExpiredString = date.toISOString().replace('T', ' ').substring(0, 19);
+      }
     }
 
     
