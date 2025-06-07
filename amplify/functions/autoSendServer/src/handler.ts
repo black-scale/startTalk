@@ -212,10 +212,10 @@ export const handler: Schema['autoSendServer']["functionHandler"] = async (event
         const credentials = await getLoginInfoFromDynamo(userKey);
         if (!credentials) {
           console.error('자격증명을 가져오지 못했습니다.');
-           if(browser){
+          if(browser){
             if(browser){
             await browser.close();
-}
+            }
           }
           return {
             statusCode: 403,
@@ -226,9 +226,7 @@ export const handler: Schema['autoSendServer']["functionHandler"] = async (event
         const _pw = credentials.userPW;
         console.log(`조회된 자격증명: ID=${_id}, PW=${_pw}`);
 
-        userID = _id;
-
-        
+        userID = _id;        
 
         await Promise.all([
           popupPage.waitForSelector('#loginId--1'),
@@ -400,7 +398,8 @@ export const handler: Schema['autoSendServer']["functionHandler"] = async (event
           console.log('로그인 및 페이지 전환 완료' , popupPage.url());
           const content = await popupPage.content();
           console.log("페이지 내용:", content);
-        } catch (err) {
+        } 
+        catch (err) {
           console.error('메시지 전송 UI를 찾지 못했습니다:', err);
           if(browser){
             await browser.close();
@@ -409,8 +408,7 @@ export const handler: Schema['autoSendServer']["functionHandler"] = async (event
             statusCode: 500,
             body: JSON.stringify('메시지 전송 UI를 찾지 못했습니다.')
           };
-        }
-                         
+        }                         
       }
       else{              
         await browser.setCookie(...storedCookies);
@@ -679,23 +677,16 @@ export const handler: Schema['autoSendServer']["functionHandler"] = async (event
     } 
     catch (error) {
       console.error("오류 발생:", error);
-      if(browser){
-        await browser.close();
-      }
       return {
         statusCode: 500,
         body: JSON.stringify(error),
       };
-  } 
-  if(browser){
-      await browser.close();
-  }
-  return {
-    statusCode: 200,
-    body: JSON.stringify({message: 'Auto share executed successfully',
-          cookieExpiredAt: expire.expiredAt,
-          kakaoID: userID
-    })
-    
+    } 
+    return {
+      statusCode: 200,
+      body: JSON.stringify({message: 'Auto share executed successfully',
+            cookieExpiredAt: expire.expiredAt,
+            kakaoID: userID
+      })    
   };
 };
