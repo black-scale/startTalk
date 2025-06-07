@@ -5,11 +5,11 @@
     <form @submit.prevent="submitEntry">
       <div>
         <label>Keyword:</label>
-        <input type="text" v-model="keyword" placeholder="Enter keyword" />
+        <input type="text" v-model="keyword_model" placeholder="Enter keyword" />
       </div>
       <div>
         <label>Receiver:</label>
-        <input type="text" v-model="receiver" placeholder="Enter receiver" />
+        <input type="text" v-model="receiver_model" placeholder="Enter receiver" />
       </div>
       <div>
         <label>Set Time Items:</label>
@@ -28,9 +28,9 @@
 <script lang="ts">
 import { defineComponent, ref } from 'vue'
 import { useStore } from 'vuex'
-import { KeywordEntry, TimeItem } from '../store/modules/keywordModule'
-import { generateClient } from "aws-amplify/api"
-import type { Schema } from "../../amplify/data/resource"
+import { TimeItem } from '../store/modules/keywordModule'
+import { generateClient } from "aws-amplify/data"
+import { type Schema } from "../../amplify/data/resource"
 import MainHeader from '../components/MainHeader.vue';
 
 const client = generateClient<Schema>()
@@ -47,8 +47,8 @@ export default defineComponent({
   },
   setup() {
     const store = useStore()
-    const keyword = ref('')
-    const receiver = ref('')
+    const keyword_model = ref('')
+    const receiver_model = ref('')
     const setTime = ref<TimeItem[]>([])
 
     const addTimeItem = () => {
@@ -61,27 +61,27 @@ export default defineComponent({
 
     const submitEntry = async () => {
 
-      const _room = store.state.selectedRoom
-      const _keyword = keyword.value
-      const _receiver =  receiver.value
-      const _set_time =  JSON.stringify(setTime.value)
-      const _last_send =  null
-      const _userKey = store.state.devKey
+      const room = store.state.selectedRoom
+      const keyword : any = keyword_model.value
+      const receiver : any =  receiver_model.value
+      const set_time : any =  JSON.stringify(setTime.value)
+      const last_send =  null
+      const userKey = store.state.devKey
 
       
       try {
         // 1. 먼저 기존 데이터 조회
-        const existing = await client.models.KeywordInfo.get({ keyword: _keyword, room: _room, userKey: _userKey });
+        const existing = await client.models.KeywordInfo.get({ keyword, room, userKey });
         console.log(existing.data)
         if (existing.data) {
           // 2. 있으면 update
           const result = await client.models.KeywordInfo.update({
-              room: _room,
-              keyword: _keyword,
-              receiver: _receiver,
-              set_time: _set_time,
-              last_send:_last_send,
-              userKey: _userKey
+              room,
+              keyword,
+              userKey,              
+              receiver,
+              set_time,
+              last_send,
           })                    
 
           if(!result.data){
@@ -91,12 +91,12 @@ export default defineComponent({
         } else {
           // 3. 없으면 create
             const result = await client.models.KeywordInfo.create({
-              room: _room,
-              keyword: _keyword,
-              receiver: _receiver,
-              set_time: _set_time,
-              last_send:_last_send,
-              userKey: _userKey
+             room,
+             keyword,              
+             userKey,
+             receiver,
+             set_time,
+             last_send,
           })                     
 
           if(!result.data){
@@ -108,12 +108,12 @@ export default defineComponent({
         console.error("create or update failed", error);
       }
      
-      keyword.value = ''
-      receiver.value = ''
+      keyword_model.value = ''
+      receiver_model.value = ''
       setTime.value = []
     }
 
-    return { keyword, receiver, setTime, addTimeItem, removeTimeItem, submitEntry }
+    return { keyword_model, receiver_model, setTime, addTimeItem, removeTimeItem, submitEntry }
   }
 })
 </script>
