@@ -27,6 +27,7 @@ export const handler: Schema['saveKakaoLoginInfo']["functionHandler"] = async (e
 
   const createdAt = new Date().toISOString()
   const expireAt = Math.floor(Date.now() / 1000) + 365 * 24 * 60 * 60
+  const defaultSendMode = "Manual"
 
   try {
     // 1. 기존 항목 확인
@@ -58,7 +59,8 @@ export const handler: Schema['saveKakaoLoginInfo']["functionHandler"] = async (e
       }
     } else {
       // 신규 항목 저장
-      const { data: create } = await client.models.kakaoLoginInfo.create({id: userKey, userKey, userId, userPw,createdAt,expireAt})
+      let sendMode = defaultSendMode
+      const { data: create } = await client.models.kakaoLoginInfo.create({id: userKey, userKey, userId, userPw,createdAt,expireAt,sendMode})
 
 
       return {

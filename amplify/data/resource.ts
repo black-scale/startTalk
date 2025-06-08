@@ -23,9 +23,10 @@ const schema = a.schema({
 
     kakaoLoginInfo: a
     .model({
-      userKey: a.string(),         // 사용자 식별자 (Primary key)
+      userKey: a.string(),      // 사용자 식별자 (Primary key)
       userId: a.string(),      // 쿠키 객체 배열을 JSON 문자열로 직렬화한 값
       userPw: a.string(),        // 쿠키 중 가장 빠른 만료 시간 (Unix timestamp, 초 단위)
+      sendMode: a.string(),
       expireAt: a.integer(),        // 쿠키 중 가장 빠른 만료 시간 (Unix timestamp, 초 단위)
       createdAt: a.string()        // 저장 시각 (예: "2023-03-21T12:34:56.789Z")
     })
@@ -70,7 +71,23 @@ const schema = a.schema({
     ])
     .authorization((allow) => [allow.publicApiKey()])
     ,
-  
+    startTalkMessageByUser: a
+    .model({
+      keyword: a.string().required(),
+      room: a.string().required(),
+      userKey: a.string().required(),
+      message: a.string(),
+      additional_message: a.string(),
+      receiver: a.string().required(),
+      timestamp: a.datetime(),
+      is_send: a.boolean(),
+      errorMessage: a.string()
+    })
+    .secondaryIndexes(index => [
+      index("userKey"), index("room") // ✅ keyword+room으로 모든 userKey 조회 가능
+    ])
+    .authorization((allow) => [allow.publicApiKey()])
+    ,
     saveKakaoLoginInfo:a 
     .query()
     .arguments({

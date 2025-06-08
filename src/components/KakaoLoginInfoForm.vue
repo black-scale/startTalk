@@ -77,19 +77,27 @@ export default {
 
     this.loginExpired = this.getExpireDate || -1
 
-    if(this.loginExpired > 0){
+    if(this.userID && this.userKey &&this.loginExpired > 0){
       const date = new Date(this.loginExpired * 1000);
       this.loginExpiredString = date.toISOString().replace('T', ' ').substring(0, 19);
     }
-    else{
-      if(this.userID && this.userKey){
-         const result = await client.models.kakaoLoginCookie.get({
-              id: this.userKey
-          })
-          this.loginExpired = result.data.expireAt
-          const date = new Date(this.loginExpired * 1000);
-          this.loginExpiredString = date.toISOString().replace('T', ' ').substring(0, 19);
-      }
+
+   if(this.userKey && !this.userID){
+       const result = await client.models.kakaoLoginInfo.list({
+           filter:{ userKey : {eq:this.userKey}}
+        })
+        if(result.data){
+          this.userID = result.data[0].userId
+        }
+    }
+
+    if(this.userID && this.userKey && this.loginExpired < 0){
+      const result = await client.models.kakaoLoginCookie.get({
+          id: this.userKey
+      })
+      this.loginExpired = result.data.expireAt
+      const date = new Date(this.loginExpired * 1000);
+      this.loginExpiredString = date.toISOString().replace('T', ' ').substring(0, 19);
     }
 
     

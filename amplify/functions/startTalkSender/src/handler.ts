@@ -36,7 +36,7 @@ interface KeywordEntry {
 // @ input: message: subscribe 한 메시지, keywordEntry: 조건을 만족하는 keyword entry
 // @ output: 메시지에 미리 지정한 알림 시간 내용이 추가된 문자열
 function formatMessage(message: string, createdAt: string, keywordEntry: KeywordEntry) {
-  let message_to_send = message;
+  let message_to_send = "";
   const date = new Date(createdAt);
 
   let hours = String(date.getHours()).padStart(2, '0');
@@ -54,6 +54,15 @@ function formatMessage(message: string, createdAt: string, keywordEntry: Keyword
   });
 
   return message_to_send;
+}
+
+async function getSendMode(userKey: string): Promise<String | null> {
+  const { data: response } = await client.models.kakaoLoginInfo.get({id: userKey })
+
+  if (!response || !response.sendMode) {
+    return null;
+  }
+  return response.sendMode
 }
 
 export const handler = async (event : any) =>{
@@ -115,19 +124,69 @@ export const handler = async (event : any) =>{
           console.log(`Formatted message to send to ${entry.receiver}:\n${formatted}`);
 
         try {
-          const autosendResult = await client.queries.autoSendServer({          
-            userKey: entry.userKey,
-            userMessage: formatted,
-            friendName: entry.receiver
-          });
+          const send_mode = await getSendMode(entry.userKey)
 
-          if (autosendResult.errors) {
-            console.error("autosendserver query failed:", autosendResult.errors);
-          } else {
-            console.log("autosendserver sent:", autosendResult.data);
+          if(send_mode == "auto"){
+            const autosendResult = await client.queries.autoSendServer({          
+            userKey: entry.userKey,
+            userMessage: _message + formatted,
+            friendName: entry.receiver
+            });
+            
+            if (autosendResult.errors) {
+              console.error("autosendserver query failed:", autosendResult.errors);
+              await client.models.startTalkMessageByUser.create({
+                keyword: entry.keyword,
+                room: entry.room,
+                userKey: entry.userKey,
+                message: _message,
+                additional_message: formatted,
+                receiver: entry.receiver,
+                timestamp: new Date().toISOString(),
+                is_send: false,
+                errorMessage:  autosendResult.errors[0].message
+              })
+            } else {
+              console.log("autosendserver sent:", autosendResult.data);
+              await client.models.startTalkMessageByUser.create({
+                keyword: entry.keyword,
+                room: entry.room,
+                userKey: entry.userKey,
+                message: _message,
+                additional_message: formatted,
+                receiver: entry.receiver,
+                timestamp: new Date().toISOString(),
+                is_send: true,
+                errorMessage: null
+              })
+            }
+          }                    
+          else if(send_mode == "manual"){
+            await client.models.startTalkMessageByUser.create({
+              keyword: entry.keyword,
+              room: entry.room,
+              userKey: entry.userKey,
+              message: _message,
+              additional_message: formatted,
+              receiver: entry.receiver,
+              timestamp: new Date().toISOString(),
+              is_send: false,
+              errorMessage: null
+            })
           }
         } catch (err) {
           console.error("Exception occurred during autoSendServer call:", err);
+             await client.models.startTalkMessageByUser.create({
+              keyword: entry.keyword,
+              room: entry.room,
+              userKey: entry.userKey,
+              message: _message,
+              additional_message: formatted,
+              receiver: entry.receiver,
+              timestamp: new Date().toISOString(),
+              is_send: false,
+              errorMessage:  "카카오톡 전송 실패"
+            })
             return {
               statusCode: 404,
               body: "카카오톡 전송 실패",
