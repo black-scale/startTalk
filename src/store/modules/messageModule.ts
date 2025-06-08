@@ -4,6 +4,7 @@ import { KeywordEntry, KeywordEntriesState, TimeItem } from '../../store/modules
 import type { Schema } from "../../../amplify/data/resource"
 
 export interface messageEntry {
+    id: string,
     room: string
     content: string
     contentToSend:string

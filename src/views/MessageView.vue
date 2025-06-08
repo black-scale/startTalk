@@ -36,10 +36,20 @@
         :key="index"
         class="w-full bg-gray-100 p-4 rounded shadow space-y-2"
       >
+
         <!-- 원본 메시지 -->
-        <div class="text-sm text-gray-600 flex justify-between">
-          <div><span class="font-bold text-gray-700">감지</span> {{ entry.content }}</div>
+       <div class="text-sm text-gray-600 flex justify-between">
+          <div>
+            <span class="font-bold text-gray-700">감지 </span>
+            <span v-html="highlightKeyword(entry.content, entry.keyword)"></span>
+          </div>
           <div class="text-xs text-gray-400">{{ entry.timestamp }}</div>
+          <button
+            class="bg-black bg-opacity-0 hover:bg-opacity-60 text-white rounded-full w-6 h-6 flex items-center justify-center transition duration-150"
+            @click="deleteEntry(entry, index)"
+            >
+            ❌
+          </button>
         </div>
 
         <!-- 전송 메시지 -->
@@ -97,29 +107,79 @@ export default {
     return{
       isSendingMap: {} as Record<number, boolean>,
       local_mode : 'off',
-      local_room : ""
+      local_room : "",
+      allMessageEntries:[]
     }
     
   },
 
   computed: {
-    ...mapState("messageModel", {
-      allMessageEntries: (state:messageEntriesState)  => state.entries,
-    }),
-    ...mapGetters(['getRoom'])
+    ...mapGetters(['getRoom','getKey'])
     
   },
-  created(){
-    this.local_room = this.getRoom.name
-    console.log(this.getRoom,this.local_room)
+async created() {
+  // 1. 로컬 room 이름 설정
+  this.local_room = this.getRoom.name;
+  console.log(this.getRoom, this.local_room);
+
+  // 2. 메시지 불러오기
+  const { data: items, errors } = await client.models.startTalkMessageByUser.list(
+    {filter:{room: {eq : this.local_room}, userKey: {eq:this.getKey}}}
+  );
+
+  if (errors && errors.length > 0) {
+    console.error("DynamoDB fetch error:", errors);
+  }
+  else{
+      // 3. 메시지 가공 후 저장
+    this.allMessageEntries = (items ?? []).map((item) => {
+    const timestamp = item.timestamp ?? new Date().toISOString();
+    const errorMessage = item.errorMessage ?? "";
+    const isSend = item.is_send ?? false;
+
+    return {
+      id: item.id,
+      room: item.room,
+      content: item.message ?? "",
+      contentToSend:item.message + item.additional_message,
+      keyword: item.keyword,
+      timestamp,
+      isSend,
+      error: !!errorMessage,
+      errorMessage,
+      receiver: item.receiver
+    };
+  });
+  }
+
+
+
+  // 전송 모드 불러오기
+   const { data: login_info, errors: login_errors } = await client.models.kakaoLoginInfo.get(
+    {id:this.getKey}
+  );
+    if (login_errors && login_errors.length > 0) {
+    console.error("DynamoDB fetch error:", login_errors);
+  }else{
+    this.local_mode = login_info.sendMode
+  }
+
   },
   methods: {
     ...mapActions('messageModel', ['updateMessageEntry','setMode','sendMessage','clearMessage']),
     
-    changeMode(mode:string) {
+    async changeMode(mode:string) {
       this.local_mode = mode;
-      this.setMode(mode);
-      console.log(`모드 변경됨: ${this.local_mode}`);
+      const { data: login_info, errors: login_errors } = await client.models.kakaoLoginInfo.update(
+        {
+          id:this.getKey,
+          sendMode: this.local_mode
+        }
+      );
+      if (login_errors && login_errors.length > 0) {
+        console.error("DynamoDB 로그인 모드 반영 실패:", login_errors);
+      }
+      console.log(`모드 변경됨: ${this.local_mode}`, login_info.sendMode);
     },
     async send(entry: messageEntry, index:number) {
       if (this.isSendingMap[index] || entry.isSend) return;
@@ -130,6 +190,32 @@ export default {
       console.log(raw_res)
       this.updateMessageEntry({ index: index, entry: raw_res });
 
+    },
+    highlightKeyword(content: string, keyword: string) {
+      if (!keyword) return content;
+      const escapedKeyword = keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // 특수문자 이스케이프
+      const regex = new RegExp(`(${escapedKeyword})`, 'gi');
+      return content.replace(regex, `<strong class="text-black font-bold">$1</strong>`);
+    },
+    
+    async deleteEntry(entry: messageEntry, index: number) {
+      if (!confirm(`정말로 이 메시지를 삭제하시겠습니까?\n\n"${entry.content}"`)) return;
+
+      try {
+        const result = await client.models.startTalkMessageByUser.delete({
+          id: entry.id
+        });
+
+        if(!result.errors){
+          this.allMessageEntries.splice(index, 1);
+        }
+        else{
+          console.log("삭제 실패: ", result.errors)
+        }
+        
+      } catch (error) {
+        alert('삭제 중 오류가 발생했습니다.');
+      }
     }
   }
 }
