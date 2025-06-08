@@ -93,12 +93,10 @@
 
 
 <script lang="ts">
- import { mapGetters, mapActions,mapState } from 'vuex'
-import { generateClient } from 'aws-amplify/data'
+import { generateClient } from "aws-amplify/api"
 import type { Schema } from '../../amplify/data/resource'
 import { messageEntry, messageEntriesState } from '../store/modules/messageModule'
-import { toRaw } from 'vue';
-import { errorMessages } from '@aws-amplify/datastore/dist/esm/util';
+import { mapGetters, mapActions } from 'vuex'
 
 const client = generateClient<Schema>()
 
@@ -172,12 +170,12 @@ mounted() {
       if (this.isSendingMap[index] || entry.isSend) return;
 
       this.isSendingMap[index] = true // Vue에서 반응형으로 처리되게
-      const res = await this.sendMessage(entry)
+      const res : any = await this.sendMessage(entry)
 
       if(res == "success") {
         const result = await client.models.startTalkMessageByUser.update({
-          id: entry.id,
-          is_send: true,
+          id: entry.id as any,
+          is_send: true as any,
           errorMessage : null
         });
         this.messageReload()
@@ -185,7 +183,7 @@ mounted() {
       } 
       else{
         const result = await client.models.startTalkMessageByUser.update({
-          id: entry.id,
+          id: entry.id as any,
           errorMessage : res
         });
        this.messageReload()
