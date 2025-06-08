@@ -25,10 +25,6 @@ const router = createRouter({
 router.beforeEach((to: any, from: any, next: () => void) => {
   const apiKey = store.state.devKey?.apiKey;
 
-  if (apiKey && !store.state.message.subscriptionStarted) {
-    store.dispatch('message/initSubscription');
-  }
-
   next();
 });
 

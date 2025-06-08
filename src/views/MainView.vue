@@ -143,10 +143,7 @@ export default defineComponent({
     this.isChatRootSelected = this.getRoom.name  ? true:false
     this.selectedChatRoom = this.getRoom ? this.getRoom : null
 
-    // 이전 로그인 기록이 있다면 바로 시작
-    if(this.isLoggedIn && this.selectedChatRoom){
-      store.dispatch('messageModel/initSubscription');
-    }
+
   },
   methods: {
     ...mapActions(['updateKey','updateLoginState']),
@@ -196,7 +193,6 @@ export default defineComponent({
         this.setKakaoKey(this.kakaoApiKey);
         //const parsed = {'statusCode': 200, 'body':{message: 'test', cookieExpiredAt:1748121715, kakaoID:'sju0924'}}
         if(parsed.statusCode == 200){
-          store.dispatch('messageModel/initSubscription');
           alert("로그인 완료")
           const body_parsed = JSON.parse(parsed.body.toString())
           const expire = body_parsed.cookieExpiredAt? body_parsed.cookieExpiredAt : -1
@@ -250,15 +246,12 @@ export default defineComponent({
     },
     handleLoginSuccess(payload: { expiredAt: number; kakaoID: string }) {
       this.loginExpired = payload.expiredAt
-      if(this.loginExpired > 0){
-        store.dispatch('messageModel/initSubscription');
-      }
+
       this.isLoggedIn = true;
       this.showLoginConfirm=false
 
     },
     handleLoginClose(){
-      store.dispatch('messageModel/stopSubscription');
       this.showLoginConfirm = false
     }
     

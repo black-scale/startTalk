@@ -2,7 +2,6 @@ import type { Schema } from "../../../data/resource";
 import { Amplify } from "aws-amplify";
 import { generateClient } from "aws-amplify/data";
 import { getAmplifyDataClientConfig } from '@aws-amplify/backend/function/runtime';
-import * as webpush from 'web-push';
 import { env } from '$amplify/env/starttalk-sender'; // replace with your function name
 
 

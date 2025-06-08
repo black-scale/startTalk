@@ -106,39 +106,18 @@ const messageModule: Module<messageEntriesState, any> = {
         
 
           if (result.statusCode === 200) {
-            entry.isSend = true;
-            entry.error = false;
-            entry.errorMessage = "";
-            // 메시지 전송 성공 시, 관련 키워드들의 last_send 업데이트
-            const allKeywordEntries = rootGetters['keywordModel/allKeywordEntries'];
-            const matchedEntries = allKeywordEntries.filter(
-              (k: KeywordEntry) =>
-                k.room === entry.room && entry.contentToSend.includes(k.keyword)
-            );
-            
-            const now = new Date().toISOString().replace('T', ' ').substring(0, 19);; // 현재 시간 포맷
-
-            matchedEntries.forEach((k: KeywordEntry) => {
-              k.last_send = now;
-              // 변경된 키워드를 상태에 반영
-              dispatch('keywordModel/updateKeywordEntry', k, { root: true });
-            });
+            return "success"
 
           } else {
-            entry.error = true;
-            entry.errorMessage = result.body || '전송 실패';
+            return result.body || '전송 실패';
           }
         }
         else{
-           entry.error = true;
-           entry.errorMessage = res.errors.toString()|| '예외 발생';
+           return res.errors.toString()|| '예외 발생';
         }
       } catch (err) {
-        entry.error = true;
-        entry.errorMessage = err.message || '예외 발생';
+        return  err.message || '예외 발생';
       }
-
-      return entry as messageEntry
     },
     // 메시지 필터링
     // 톡방 이름과 키워드 포함 여부 검사
@@ -156,35 +135,17 @@ const messageModule: Module<messageEntriesState, any> = {
       if (state.subscriptionStarted) return; // ✅ 중복 방지
 
       const client = generateClient<Schema>();
+      const apiKey = JSON.parse(localStorage.getItem('loginState')).devKey
   
-      const subscription = client.models.startTalkMessage.onCreate().subscribe({
+      const subscription = client.models.startTalkMessageByUser.onCreate().subscribe({
         next: async (data: any) => {
           if (!data) return;
   
           const { updatedAt, ...messageData } = data;
-          
-  
-          const matchedEntries = await dispatch('filterMessage', messageData);
-          console.log(matchedEntries, messageData)
-          if (matchedEntries.length > 0) {
-            for (const entry of matchedEntries) {
-              const message_to_send = await dispatch('formatMessage', { message: messageData, keywordEntry: entry });
-              let newMessage: messageEntry = {
-                room: messageData.room,
-                content: messageData.message,
-                contentToSend: message_to_send,
-                timestamp: messageData.createdAt,
-                isSend: false,
-                error: false,
-                errorMessage: '',
-                receiver: entry.receiver
-              }
-              if(state.mode=="auto"){
-                newMessage = await dispatch('sendMessage', newMessage);
-              }
-              commit('ADD_MESSAGE_ENTRY', newMessage);
-              console.log(newMessage)
-            }
+            // 조건: userKey가 같고 현재 경로가 '/'인 경우 새로고침
+          if (messageData.userKey === apiKey && window.location.pathname === '/') {
+            console.log('🔄 새 메시지 감지됨, 새로고침 수행');
+            window.location.reload();
           }
         }
       });

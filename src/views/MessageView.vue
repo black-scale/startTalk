@@ -39,10 +39,6 @@
 
         <!-- 원본 메시지 -->
        <div class="text-sm text-gray-600 flex justify-between">
-          <div>
-            <span class="font-bold text-gray-700">감지 </span>
-            <span v-html="highlightKeyword(entry.content, entry.keyword)"></span>
-          </div>
           <div class="text-xs text-gray-400">{{ entry.timestamp }}</div>
           <button
             class="bg-black bg-opacity-0 hover:bg-opacity-60 text-white rounded-full w-6 h-6 flex items-center justify-center transition duration-150"
@@ -51,7 +47,10 @@
             ❌
           </button>
         </div>
-
+        <div  class="text-sm text-gray-600 flex">
+            <span class="font-bold text-gray-700 pr-2">감지</span>
+            <span v-html="highlightKeyword(entry.content, entry.keyword)"></span>
+        </div>
         <!-- 전송 메시지 -->
         <div class="text-sm text-gray-800">
           <span class="font-bold text-gray-700">전송</span> {{ entry.contentToSend }}
@@ -99,6 +98,7 @@ import { generateClient } from 'aws-amplify/data'
 import type { Schema } from '../../amplify/data/resource'
 import { messageEntry, messageEntriesState } from '../store/modules/messageModule'
 import { toRaw } from 'vue';
+import { errorMessages } from '@aws-amplify/datastore/dist/esm/util';
 
 const client = generateClient<Schema>()
 
@@ -108,7 +108,8 @@ export default {
       isSendingMap: {} as Record<number, boolean>,
       local_mode : 'off',
       local_room : "",
-      allMessageEntries:[]
+      allMessageEntries:[],
+      subscription: null as any,
     }
     
   },
@@ -123,48 +124,34 @@ async created() {
   console.log(this.getRoom, this.local_room);
 
   // 2. 메시지 불러오기
-  const { data: items, errors } = await client.models.startTalkMessageByUser.list(
-    {filter:{room: {eq : this.local_room}, userKey: {eq:this.getKey}}}
-  );
-
-  if (errors && errors.length > 0) {
-    console.error("DynamoDB fetch error:", errors);
-  }
-  else{
-      // 3. 메시지 가공 후 저장
-    this.allMessageEntries = (items ?? []).map((item) => {
-    const timestamp = item.timestamp ?? new Date().toISOString();
-    const errorMessage = item.errorMessage ?? "";
-    const isSend = item.is_send ?? false;
-
-    return {
-      id: item.id,
-      room: item.room,
-      content: item.message ?? "",
-      contentToSend:item.message + item.additional_message,
-      keyword: item.keyword,
-      timestamp,
-      isSend,
-      error: !!errorMessage,
-      errorMessage,
-      receiver: item.receiver
-    };
-  });
-  }
-
-
-
+  this.messageReload()
   // 전송 모드 불러오기
-   const { data: login_info, errors: login_errors } = await client.models.kakaoLoginInfo.get(
+  const { data: login_info, errors: login_errors } = await client.models.kakaoLoginInfo.get(
     {id:this.getKey}
   );
-    if (login_errors && login_errors.length > 0) {
+  if (login_errors && login_errors.length > 0) {
     console.error("DynamoDB fetch error:", login_errors);
   }else{
     this.local_mode = login_info.sendMode
   }
 
-  },
+},
+
+mounted() {
+  // ✅ 진입 시 subscription 생성
+  this.subscription = client.models.startTalkMessageByUser.onCreate().subscribe({
+    next: async (data: any) => {
+      if (!data) return;
+
+      const { updatedAt, ...messageData } = data;
+
+      if (messageData.userKey == this.getKey && this.$route.path === '/') {
+        console.log('🔄 새 메시지 → 새로고침');
+        this.messageReload()
+      }
+    }
+  });
+},
   methods: {
     ...mapActions('messageModel', ['updateMessageEntry','setMode','sendMessage','clearMessage']),
     
@@ -186,10 +173,23 @@ async created() {
 
       this.isSendingMap[index] = true // Vue에서 반응형으로 처리되게
       const res = await this.sendMessage(entry)
-      const raw_res = toRaw(res)
-      console.log(raw_res)
-      this.updateMessageEntry({ index: index, entry: raw_res });
 
+      if(res == "success") {
+        const result = await client.models.startTalkMessageByUser.update({
+          id: entry.id,
+          is_send: true,
+          errorMessage : null
+        });
+        this.messageReload()
+       
+      } 
+      else{
+        const result = await client.models.startTalkMessageByUser.update({
+          id: entry.id,
+          errorMessage : res
+        });
+       this.messageReload()
+      }
     },
     highlightKeyword(content: string, keyword: string) {
       if (!keyword) return content;
@@ -216,6 +216,44 @@ async created() {
       } catch (error) {
         alert('삭제 중 오류가 발생했습니다.');
       }
+    },
+    async messageReload(){
+      const { data: items, errors } = await client.models.startTalkMessageByUser.list(
+        {filter:{room: {eq : this.local_room}, userKey: {eq:this.getKey}}}
+      );
+
+      if (errors && errors.length > 0) {
+        console.error("DynamoDB fetch error:", errors);
+      }
+      else{
+          // 3. 메시지 가공 후 저장
+        this.allMessageEntries = (items ?? []).map((item) => {
+        const timestamp = item.timestamp ?? new Date().toISOString();
+        const errorMessage = item.errorMessage ?? "";
+        const isSend = item.is_send ?? false;
+
+        return {
+          id: item.id,
+          room: item.room,
+          content: item.message ?? "",
+          contentToSend:item.message + item.additional_message,
+          keyword: item.keyword,
+          timestamp,
+          isSend,
+          error: !!errorMessage,
+          errorMessage,
+          receiver: item.receiver
+        };
+        });
+      }
+    }
+  },
+  beforeUnmount() {
+    // ✅ 벗어날 때 subscription 해제
+    if (this.subscription) {
+      this.subscription.unsubscribe();
+      this.subscription = null;
+      console.log('🧹 Subscription 해제됨');
     }
   }
 }

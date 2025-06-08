@@ -180,7 +180,6 @@ export default {
         //정상 응답 왔을때
         const loginparsed = JSON.parse(loginresult.data.toString()) 
         if(loginparsed.statusCode == 200){
-          store.dispatch('messageModel/initSubscription');
           const body_parsed = JSON.parse(loginparsed.body.toString())
           const expire = body_parsed.cookieExpiredAt? body_parsed.cookieExpiredAt : -1
           const id =  body_parsed.kakaoID?  body_parsed.kakaoID : ""
