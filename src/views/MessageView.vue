@@ -173,11 +173,17 @@ mounted() {
       const res : any = await this.sendMessage(entry)
 
       if(res == "success") {
-        const result = await client.models.startTalkMessageByUser.update({
+        await client.models.startTalkMessageByUser.update({
           id: entry.id as any,
           is_send: true as any,
           errorMessage : null
         });
+        await client.models.KeywordInfo.update({
+            keyword: entry.keyword as any,
+            room : entry.room as any,
+            userKey: this.getKey as any,
+            last_send : new Date().toISOString() as any
+        })
         this.messageReload()
        
       } 

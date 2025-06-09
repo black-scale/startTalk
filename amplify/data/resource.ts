@@ -79,7 +79,7 @@ const schema = a.schema({
       message: a.string(),
       additional_message: a.string(),
       receiver: a.string().required(),
-      timestamp: a.datetime(),
+      timestamp: a.datetime(), //last_send
       is_send: a.boolean(),
       errorMessage: a.string()
     })

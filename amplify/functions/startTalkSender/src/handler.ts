@@ -158,6 +158,13 @@ export const handler = async (event : any) =>{
                 is_send: true,
                 errorMessage: null
               })
+
+              await client.models.KeywordInfo.update({
+                keyword: entry.keyword,
+                room : entry.room,
+                userKey: entry.userKey,
+                last_send : new Date().toISOString()
+              })
             }
           }                    
           else if(send_mode == "manual"){
