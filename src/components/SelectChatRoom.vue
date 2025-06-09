@@ -45,8 +45,8 @@
             stores: [
                 { region: "강남구", name: "달토", display_name:"달리는 토끼" },
                 { region: "강남구", name: "유앤미", display_name:"You & Me"  },
-                { region: "강남구", name: "CNN", display_name:"CNN"  },
-                { region: "강남구", name: "사라", display_name:"사라있네"  },
+                { region: "강남구", name: "도파민", display_name:"도파민"  },
+                { region: "강남구", name: "엘리트", display_name:"엘리트"  },
                 { region: "강남구", name: "퍼펙트", display_name:"퍼펙트"  },
                 { region: "강남구", name: "가게이름8", display_name:""  },
                 { region: "인천", name: "가게이름1", display_name:""  },
