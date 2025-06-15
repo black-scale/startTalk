@@ -39,6 +39,7 @@ const client = generateClient<Schema>()
                 const { data: infoRes } = await client.models.kakaoLoginInfo.get({ id: this.userKey });
                 const kakaoID = infoRes?.userId;
 
+
                 if(!cookieRes || !infoRes){
                 alert("로그인에 실패하였습니다. 로그인 정보를 확인하거나 잠시 후 다시 시도해주세요")
                 return;

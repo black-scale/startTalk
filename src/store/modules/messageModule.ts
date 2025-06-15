@@ -7,7 +7,8 @@ export interface messageEntry {
     id: string,
     room: string
     content: string
-    contentToSend:string
+    contentToSend:string,
+    keyword: string,
     timestamp: string
     isSend:boolean
     error:boolean

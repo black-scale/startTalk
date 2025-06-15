@@ -240,7 +240,7 @@ mounted() {
           id: item.id,
           room: item.room,
           content: item.message ?? "",
-          contentToSend:item.message + item.additional_message,
+          contentToSend:item.additional_message,
           keyword: item.keyword,
           timestamp,
           isSend,
@@ -248,7 +248,8 @@ mounted() {
           errorMessage,
           receiver: item.receiver
         };
-        });
+        })
+        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
       }
     }
   },

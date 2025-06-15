@@ -32,28 +32,229 @@ interface KeywordEntry {
   userKey:string
 }
 
+const startTriggers = ['ㅅ', 'ㅅㅌㅌ', 'ㅅㅅ', 'ㅆ'];
+const endTriggers = ['ㄲ', '끝'];
+const extendTriggers = ['ㅇㅈ'];
+const correctionTriggers = ['ㅈㅈ'];
+
+function getName(message: string){
+    // 한글 자모로 이루어진 접두사 제거 (ex: ㅈㅈ, ㅅㅅ, ㅂㅂ, ㅇㅈ 등)
+  const cleaned = message.replace(/^[ㄱ-ㅎㅏ-ㅣ]+/, '').trim();
+
+  // cleaned 문자열의 시작에서 "숫자 + 한글 단어" 탐지
+  const match = cleaned.match(/^(\d{2,3})\s*([가-힣]+)/);
+  if (match) {
+    return  `${match[1]} ${match[2]}` 
+  }
+
+  return "";
+}
+
+async function client_getStart(keyword: string, userKey: string,room:string){
+  // userKey를 받아 keyword가 포함된 최근 메시지를 리턴턴
+  // "103 정훈 키워드드 ㅆ \n 스타트 00:51/완티 01:01/만시 01:22"
+    // 1. 해당 userKey로 메시지 조회
+  const { data: messages, errors } = await client.models.startTalkMessageByUser.list({
+    filter: {
+      userKey: { eq: userKey },
+      room : {eq: room}
+    }
+  });
+
+  if (errors || !messages) {
+    console.error("DynamoDB fetch error:", errors);
+    return null;
+  }
+
+  // 2. keyword + startTrigger 포함된 메시지 필터링
+  const filtered = messages.filter(entry => {
+    const content = (entry.message ?? "").replace(/\s/g, '');
+    return  content.includes(keyword) &&
+              startTriggers.some(trigger => content.includes(trigger));
+  });
+
+  if (filtered.length === 0) return null;
+
+  // 3. timestamp 기준으로 최신 항목 선택
+  const latest = filtered.sort((a, b) =>
+    new Date(b.timestamp ?? '').getTime() - new Date(a.timestamp ?? '').getTime()
+  )[0];
+
+  return latest.timestamp ?? null;
+
+  return "2025-06-13T00:51:25.078Z"
+
+}
+
 // @ input: message: subscribe 한 메시지, keywordEntry: 조건을 만족하는 keyword entry
 // @ output: 메시지에 미리 지정한 알림 시간 내용이 추가된 문자열
-function formatMessage(message: string, createdAt: string, keywordEntry: KeywordEntry) {
+async function formatMessage(message: string, createdAt: string, keywordEntry: KeywordEntry)  : Promise<string> {
   let message_to_send = "";
   const date = new Date(createdAt);
 
   let hours = String(date.getHours()).padStart(2, '0');
   let minutes = String(date.getMinutes()).padStart(2, '0');
 
-  message_to_send += `\n스타트 ${hours}:${minutes}`;
-  console.log(keywordEntry.set_time, typeof(keywordEntry.set_time))
-  let last_minute = 0;
-  keywordEntry.set_time.forEach((time: TimeItem) => {
-    date.setMinutes(date.getMinutes() + time.time - last_minute);
-    hours = String(date.getHours()).padStart(2, '0');
-    minutes = String(date.getMinutes()).padStart(2, '0');
-    message_to_send += `/${time.word} ${hours}:${minutes}`;
-    last_minute = time.time;
-  });
+  // 1. 메시지 타입 검출
+  
+  const hasStart = startTriggers.some(trigger => message.includes(trigger));
+  const hasEnd = endTriggers.some(trigger => message.includes(trigger));
+  const hasExtend = extendTriggers.some(trigger => message.includes(trigger));
+  const hasCorrection = correctionTriggers.some(trigger => message.includes(trigger));
 
-  return message_to_send;
+  //2. 정정
+  //주의 사항: (1~2자리 숫자)시(1~2자리 숫자) 를 감지하기 때문에, 혹시 시간 이외의 자리에 해당 포맷의 내용이 있을 시 파싱이 부정확해질 수 있음음
+  if(hasCorrection){
+    // 2-1. 정정 처리: ㅈㅈ 제거 후 재파싱
+    const cleaned_trigger = message.replace(/ㅈㅈ/g, '');
+    const timeMatch = message.match(/(\d{1,2})시(\d{1,2})/);
+    if (!timeMatch) return "시간 정보가 잘못되었습니다";
+
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+
+    const hour = String(parseInt(timeMatch[1])).padStart(2, '0');
+    const minute = String(parseInt(timeMatch[2])).padStart(2, '0');
+
+    // ISO 형식으로 조합
+    const createdAt_parsed = `${year}-${month}-${day}T${hour}:${minute}:00`;
+    const cleanedMessage = cleaned_trigger.replace(timeMatch[0], '');
+    return formatMessage(cleanedMessage, createdAt_parsed, keywordEntry);
+  }
+  //3. 시작
+  if(hasStart){
+    message_to_send += `\n스타트 ${hours}:${minutes}`;
+    let last_minute = 0;
+    keywordEntry.set_time.forEach((time: TimeItem) => {
+        date.setMinutes(date.getMinutes() + time.time - last_minute);
+        hours = String(date.getHours()).padStart(2, '0');
+        minutes = String(date.getMinutes()).padStart(2, '0');
+        message_to_send += `/${time.word} ${hours}:${minutes}`;
+        last_minute = time.time;
+
+        
+    });
+    return message_to_send;
+  }
+
+  //4. 끝
+  if(hasEnd){
+    const rawMessage = message
+    const normalized = rawMessage.replace(/\s/g, '');
+
+    // 4-1. 직접 감지: "혜주2ㄲ", "혜주ㄲ"
+    for (const trigger of endTriggers) {
+        const regex = new RegExp(`${keywordEntry.keyword}(\\d*)${trigger}`);
+        const match = normalized.match(regex);
+        if (match) {
+        const number = match[1] || '';
+        //number '' 일시 시간만 저장하고 나중에 끝 올수도 있음
+        const msg = `\n${keywordEntry.keyword} ${number}끝`;
+        return msg;
+        }
+    }
+
+    // 4-2. 키워드는 포함되어 있고, 숫자+끝만 나오는 경우: "혜주 혜지 2ㄲ"
+    // 2. 키워드가 있고, 그 이후에 숫자+끝이 존재하면 감지
+    if (normalized.includes(keywordEntry.keyword)) {
+        const keywordIndex = normalized.lastIndexOf(keywordEntry.keyword);
+        const pattern = new RegExp(`(\\d*)(${endTriggers.join('|')})`, 'g');
+
+        let match: RegExpExecArray | null;
+        let selectedMatch: RegExpExecArray | null = null;
+
+        while ((match = pattern.exec(normalized)) !== null) {
+            if (match.index > keywordIndex) {
+                selectedMatch = match;
+                break;
+            }
+        }
+
+        if (selectedMatch) {
+            const number = selectedMatch[1] || '';
+            const msg = `\n${keywordEntry.keyword} ${number}끝`;
+            return msg;
+        }
+    }
+    return "\n끝 - 파싱 실패"
+  }
+  //5. 연장장
+  if(hasExtend){
+    const startTimeStr = await client_getStart(keywordEntry.keyword, keywordEntry.userKey, keywordEntry.room)
+    if(!startTimeStr){
+      return "연장 대상 스타트 메시지를 찾을 수 없습니다"
+    }
+    const originalStart = new Date(startTimeStr);
+
+    const rawMessage = message
+    const normalized = rawMessage.replace(/\s/g, '');
+    let multiplier : (number | null)  = null
+
+    // 4-1. 직접 감지: "혜주 2ㅇㅈ", "혜주 ㅇㅈㅈ"
+    for (const trigger of extendTriggers) {
+        const regex = new RegExp(`${keywordEntry.keyword}(\\d*)${trigger}`);
+        const match = normalized.match(regex);
+        if (match) {
+          multiplier = parseInt(match[1]) || 1;
+          break;
+        }
+    }
+
+    // 4-2. 키워드는 포함되어 있고, 숫자+끝만 나오는 경우: "혜주 혜지 2ㄲ"
+    // 2. 키워드가 있고, 그 이후에 숫자+끝이 존재하면 감지
+    if (!multiplier && normalized.includes(keywordEntry.keyword)) {
+        const keywordIndex = normalized.lastIndexOf(keywordEntry.keyword);
+        const pattern = new RegExp(`(\\d*)(${extendTriggers.join('|')})`, 'g');
+
+        let match: RegExpExecArray | null;
+        let selectedMatch: RegExpExecArray | null = null;
+
+        while ((match = pattern.exec(normalized)) !== null) {
+            if (match.index > keywordIndex) {
+                selectedMatch = match;
+                break;
+            }
+        }
+
+        if (selectedMatch) {
+            multiplier = parseInt(selectedMatch[1]) || 1;
+        }
+    }
+
+    if(!multiplier){
+      return "연장 대상 키워드를 찾을 수 없습니다"
+    }
+
+    // 제일 긴 시간 찾기
+    const longestTime = keywordEntry.set_time.reduce((max, item) => Math.max(max, item.time), 0);
+
+    // 새로운 스타트 시간 = 원래 스타트 + (제일 긴 시간 × multiplier)
+    const newStart = new Date(originalStart);
+    newStart.setMinutes(newStart.getMinutes() + longestTime * multiplier);
+
+    // 메시지 작성
+    let message_to_send = ` ${multiplier}연장 \n`;
+
+    const hh = String(newStart.getHours()).padStart(2, '0');
+    const mm = String(newStart.getMinutes()).padStart(2, '0');
+    message_to_send += `${hh}${mm}스타트`;
+
+    for (const item of keywordEntry.set_time) {
+      const t = new Date(newStart);
+      t.setMinutes(t.getMinutes() + item.time);
+      const h = String(t.getHours()).padStart(2, '0');
+      const m = String(t.getMinutes()).padStart(2, '0');
+      message_to_send += ` ${h}${m}${item.word}`;
+    }
+
+    return message_to_send;
+  }
+
+  return "해당하는 메시지의 포맷을 찾을 수 없습니다"
+ 
 }
+
 
 async function getSendMode(userKey: string): Promise<String | null> {
   const { data: response } = await client.models.kakaoLoginInfo.get({id: userKey })
@@ -117,13 +318,16 @@ export const handler = async (event : any) =>{
         });
 
         console.log("Matched infos in the received room: ", matchedEntries)
-        // 3. 메시지 포맷팅 및 autosendserver 쿼리 호출
+        // 3. 메시지 포맷팅 
         for (const entry of matchedEntries) {
-          const formatted = formatMessage(_message,_createdAt, entry);
-          console.log(`Formatted message to send to ${entry.receiver}:\n${formatted}`);
+          const formatted = await formatMessage(_message,_createdAt, entry);
+          const message_to_send = getName(_message) + formatted
+          console.log(`Formatted message to send to ${entry.receiver}:\n${message_to_send}`);
 
+        // autosendserver 쿼리 호출
         try {
           const send_mode = await getSendMode(entry.userKey)
+          
 
           if(send_mode == "auto"){
             const autosendResult = await client.queries.autoSendServer({          
@@ -139,7 +343,7 @@ export const handler = async (event : any) =>{
                 room: entry.room,
                 userKey: entry.userKey,
                 message: _message,
-                additional_message: formatted,
+                additional_message: message_to_send,
                 receiver: entry.receiver,
                 timestamp: new Date().toISOString(),
                 is_send: false,
@@ -152,7 +356,7 @@ export const handler = async (event : any) =>{
                 room: entry.room,
                 userKey: entry.userKey,
                 message: _message,
-                additional_message: formatted,
+                additional_message: message_to_send,
                 receiver: entry.receiver,
                 timestamp: new Date().toISOString(),
                 is_send: true,
@@ -173,7 +377,7 @@ export const handler = async (event : any) =>{
               room: entry.room,
               userKey: entry.userKey,
               message: _message,
-              additional_message: formatted,
+              additional_message: message_to_send,
               receiver: entry.receiver,
               timestamp: new Date().toISOString(),
               is_send: false,
@@ -187,7 +391,7 @@ export const handler = async (event : any) =>{
               room: entry.room,
               userKey: entry.userKey,
               message: _message,
-              additional_message: formatted,
+              additional_message: message_to_send,
               receiver: entry.receiver,
               timestamp: new Date().toISOString(),
               is_send: false,
