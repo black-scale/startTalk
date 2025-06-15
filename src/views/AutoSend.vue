@@ -23,8 +23,8 @@ export default {
         objectType: "text",
         text: message,
         link: {
-          mobileWebUrl: "https://naver.com",
-          webUrl: "https://m.naver.com"
+          mobileWebUrl: process.env.RECEIVE_DEFAULT_URL,
+          webUrl: process.env.RECEIVE_DEFAULT_URL
         },
         installTalk: true
       });

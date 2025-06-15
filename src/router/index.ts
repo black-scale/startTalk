@@ -6,6 +6,7 @@ import AutoSend from '../views/AutoSend.vue'
 import KakaoMessageSender from '../components/KakaoMessageSender.vue'
 import KakaoMessgeSubscriber from '../components/KakaoMessgeSubscriber.vue'
 import store from '../store' 
+import ReceiveView from '../views/ReceiveView.vue'
 
 
 const routes: Array<RouteRecordRaw> = [
@@ -14,7 +15,8 @@ const routes: Array<RouteRecordRaw> = [
   { path: '/keyword/register', name: 'KeywordRegister', component: RegisterKeywordView },
   { path: '/send', name: 'KakaoMessageSender', component: KakaoMessageSender },
   { path: '/AutoSend', name: 'AutoSend', component: AutoSend },
-  { path: '/sub', name: 'Subscriber', component: KakaoMessgeSubscriber }
+  { path: '/sub', name: 'Subscriber', component: KakaoMessgeSubscriber },
+   { path: '/receive', name: 'Subscriber', component: ReceiveView }
 ]
 
 const router = createRouter({
