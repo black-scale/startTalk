@@ -23,8 +23,8 @@ export default {
         objectType: "text",
         text: message,
         link: {
-          mobileWebUrl: process.env.RECEIVE_DEFAULT_URL,
-          webUrl: process.env.RECEIVE_DEFAULT_URL
+          mobileWebUrl: import.meta.env.VITE_APP_RECEIVE_DEFAULT_URL,
+          webUrl: import.meta.env.VITE_APP_RECEIVE_DEFAULT_URL
         },
         installTalk: true
       });
