@@ -167,6 +167,37 @@ export const handler: Schema['autoSendServer']["functionHandler"] = async (event
       return { statusCode: 400, body: 'friendName, userKey, userMessage 파라미터 필요' };
     }
 
+    
+    // 3. DynamoDB에서 사용자 자격증명 조회
+    const credentials = await getLoginInfoFromDynamo(userKey);
+    if (!credentials) {
+      console.error('자격증명을 가져오지 못했습니다.');
+
+      return {
+        statusCode: 403,
+        body: JSON.stringify('자격증명을 가져오지 못했습니다.'),
+      };
+    }
+    const _id = credentials.userID;
+    const _pw = credentials.userPW;
+    console.log(`조회된 자격증명: ID=${_id}, PW=${_pw}`);
+
+    userID = _id;        
+
+    // 수신 거부 여부 확인
+    const { data: unsubscribed_data  } = await client.models.UnsubscribeInfo.list({
+      filter: {
+        userId: { eq: _id },
+        receiver: { eq: friendName }
+      }
+    });
+    const isUnsubscribed = unsubscribed_data.length > 0;
+    if(isUnsubscribed){
+       return {
+            statusCode: 500,
+            body: "수신자가 수신을 거부하였습니다.",
+        };
+    }
     // 1. DynamoDB에서 쿠키 정보 조회
     const storedCookies = await getCookiesFromDynamo(userKey);
     console.log(`쿠키 존재 여부: ${storedCookies ? '있음' : '없음'}`);
@@ -181,7 +212,8 @@ export const handler: Schema['autoSendServer']["functionHandler"] = async (event
     });
 
     let page: Page = await browser.newPage();   
-    const targetUrl = `${SEND_DEFAULT_URL}?key=${encodeURIComponent(userKey)}&message=${encodeURIComponent(userMessage)}`;
+    const targetUrl = `${SEND_DEFAULT_URL}?key=${encodeURIComponent(userKey)}&message=${encodeURIComponent(userMessage)}&id=${userID}&receiver=${friendName}`;
+    
     // 3. 쿠키가 저장되어 있다면, 페이지에 주입
     if (!storedCookies) {
         //저장된 쿠키가 없을때 로그인창 띄움움\
@@ -208,25 +240,6 @@ export const handler: Schema['autoSendServer']["functionHandler"] = async (event
         await popupPage.bringToFront();
         console.log('공유 피커 팝업 창 전환 완료');
   
-        // 3. DynamoDB에서 사용자 자격증명 조회
-        const credentials = await getLoginInfoFromDynamo(userKey);
-        if (!credentials) {
-          console.error('자격증명을 가져오지 못했습니다.');
-          if(browser){
-            if(browser){
-            await browser.close();
-            }
-          }
-          return {
-            statusCode: 403,
-            body: JSON.stringify('자격증명을 가져오지 못했습니다.'),
-          };
-        }
-        const _id = credentials.userID;
-        const _pw = credentials.userPW;
-        console.log(`조회된 자격증명: ID=${_id}, PW=${_pw}`);
-
-        userID = _id;        
 
         await Promise.all([
           popupPage.waitForSelector('#loginId--1'),

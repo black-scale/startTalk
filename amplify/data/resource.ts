@@ -71,6 +71,15 @@ const schema = a.schema({
     ])
     .authorization((allow) => [allow.publicApiKey()])
     ,
+
+    UnsubscribeInfo : a.model({
+      userId: a.string().required(),
+      receiver: a.string().required(),
+      unsubscribedAt: a.timestamp(),
+    }).identifier(["userId", "receiver"])
+     .authorization((allow) => [allow.publicApiKey()])
+    ,
+
     startTalkMessageByUser: a
     .model({
       keyword: a.string().required(),

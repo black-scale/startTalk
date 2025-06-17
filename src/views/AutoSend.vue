@@ -3,7 +3,9 @@ export default {
   data() {
     return {
       userKey: new URLSearchParams(window.location.search).get('key'),
-      message: new URLSearchParams(window.location.search).get('message')
+      message: new URLSearchParams(window.location.search).get('message'),
+      id: new URLSearchParams(window.location.search).get('id')|| "",
+      receiver : new URLSearchParams(window.location.search).get('receiver') || ""
     };
   },
   mounted() {
@@ -19,12 +21,15 @@ export default {
         Kakao.init(this.userKey);
         console.log("Kakao SDK 초기화 완료:", this.userKey);
       }
+
+      const url = `${import.meta.env.VITE_APP_RECEIVE_DEFAULT_URL}?id=${this.id}&receiver=${this.receiver}`;
+
       Kakao.Link.sendDefault({
         objectType: "text",
         text: message,
         link: {
-          mobileWebUrl: import.meta.env.VITE_APP_RECEIVE_DEFAULT_URL,
-          webUrl: import.meta.env.VITE_APP_RECEIVE_DEFAULT_URL
+          mobileWebUrl: url,
+          webUrl: url
         },
         installTalk: true
       });

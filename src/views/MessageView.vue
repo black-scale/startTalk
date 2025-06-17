@@ -68,6 +68,12 @@
           >
             전송중
           </button>
+          <button v-else-if="isUnsubscribedMap[index]"
+            class="bg-red-500 text-white text-sm px-4 py-1 rounded"
+            :disabled="entry.isSend"
+          >
+            수신 거부
+          </button>
           <button v-else
             class="bg-blue-500 text-white text-sm px-4 py-1 rounded"
             @click="send(entry, index)"
@@ -104,6 +110,7 @@ export default {
   data(){
     return{
       isSendingMap: {} as Record<number, boolean>,
+      isUnsubscribedMap: {} as Record<number, boolean>,
       local_mode : 'off',
       local_room : "",
       allMessageEntries:[],
@@ -113,7 +120,7 @@ export default {
   },
 
   computed: {
-    ...mapGetters(['getRoom','getKey'])
+    ...mapGetters(['getRoom','getKey','getID'])
     
   },
 async created() {
@@ -184,16 +191,18 @@ mounted() {
             userKey: this.getKey as any,
             last_send : new Date().toISOString() as any
         })
+        this.isSendingMap[index] = false 
         this.messageReload()
-       
       } 
       else{
         const result = await client.models.startTalkMessageByUser.update({
           id: entry.id as any,
           errorMessage : res
         });
+       this.isSendingMap[index] = false 
        this.messageReload()
       }
+      
     },
     highlightKeyword(content: string, keyword: string) {
       if (!keyword) return content;
@@ -250,6 +259,23 @@ mounted() {
         };
         })
         .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
+        // 2. 수신 거부 목록 조회
+        const { data: unsubscribed } = await client.models.UnsubscribeInfo.list({
+          filter: {
+            userId: { eq: this.getID } // 현재 사용자 ID 기준
+          }
+        });
+
+        const blockedSet = new Set(unsubscribed.map(entry => entry.receiver));
+
+        // 3. 인덱스별로 수신 거부 여부 매핑
+        this.isUnsubscribedMap = {};
+        this.allMessageEntries.forEach((entry: messageEntry, index: number) => {
+          this.isUnsubscribedMap[index] = blockedSet.has(entry.receiver);
+        });
+
+
       }
     }
   },
