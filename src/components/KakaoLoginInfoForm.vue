@@ -33,7 +33,7 @@
   </div>
 </template>
 
-<script  lang="ts">
+<script lang="ts">
 import { generateClient } from "aws-amplify/api"
 import type { Schema } from "../../amplify/data/resource"
 import { mapActions, mapGetters } from 'vuex'
@@ -41,6 +41,40 @@ import LoginTimeoutConfirmModal from "./LoginTimeoutConfirmModal.vue";
 import store from '../store';
 
 const client = generateClient<Schema>()
+
+const VAPID_PUBLIC_KEY = import.meta.env.VITE_APP_VAPID_PUBLIC_KEY;
+
+function urlBase64ToUint8Array(base64String: string): Uint8Array {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding)
+    .replace(/-/g, '+')
+    .replace(/_/g, '/');
+  const rawData = window.atob(base64);
+  return Uint8Array.from([...rawData].map((c) => c.charCodeAt(0)));
+}
+
+export async function registerPush(): Promise<PushSubscription | null> {
+  if (!('serviceWorker' in navigator)) return null;
+
+  const registration = await navigator.serviceWorker.register('../../service-worker.js');
+
+  const permission = await Notification.requestPermission();
+  if (permission !== 'granted') {
+    console.warn('❌ 알림 권한 거부됨');
+    return null;
+  }
+
+  const existing = await registration.pushManager.getSubscription();
+  if (existing) return existing;
+
+  const subscription = await registration.pushManager.subscribe({
+    userVisibleOnly: true,
+    applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+  });
+
+  console.log('✅ Push 구독 완료');
+  return subscription;
+}
 
 
 export default {
@@ -86,7 +120,7 @@ export default {
        const result = await client.models.kakaoLoginInfo.list({
            filter:{ userKey : {eq:this.userKey}}
         })
-        if(result.data){
+        if(result.data.length > 0){
           this.userID = result.data[0].userId
         }
     }
@@ -117,37 +151,45 @@ export default {
         let idtoLogin = this.userId  
         if(!this.showID){
           idtoLogin = this.getID
-          }
-          const result = await client.queries.saveKakaoLoginInfo({
+        }
+
+        const subscriptionraw =  await registerPush();
+        let subscription = "{}"
+        if (subscriptionraw){
+          subscription =  JSON.stringify(subscriptionraw.toJSON()); // ← 알림 권한 요청 및 구독 생성
+        }          
+
+        const result = await client.queries.saveKakaoLoginInfo({
               userKey: this.userKey,
               userId: idtoLogin,
               userPw: this.userPw,
+              subscription: subscription
           })
-          const parsed = JSON.parse(result.data.toString())
-          this.isSetLoginInfo = false
-          // 로그인/ 비밀번호 변경 성공 시 재로그인 시도도
-          if(parsed.statusCode == 200 || parsed.statusCode == 201){
-            alert("로그인 정보 등록 완료")
-            this.showKey = false;
-            this.showID = false;
-            this.updateLoginState({expiredAt:-1,kakaoID: this.userId})
-            this.$emit('close')
-          }
-          else if(parsed.statusCode == 202){
-            alert(parsed.body)
-          }
-          else{
-            alert(parsed.body)
-            store.dispatch('messageModel/stopSubscription');
-          }
-
+        const parsed = JSON.parse(result.data.toString())
+        this.isSetLoginInfo = false
+        // 로그인/ 비밀번호 변경 성공 시 재로그인 시도도
+        if(parsed.statusCode == 200 || parsed.statusCode == 201){
+          alert("로그인 정보 등록 완료")
+          this.showKey = false;
+          this.showID = false;
+          this.updateLoginState({expiredAt:-1,kakaoID: this.userId})
+          this.$emit('close')
+        }
+        else if(parsed.statusCode == 202){
+          alert(parsed.body)
+        }
+        else{
+          alert(parsed.body)
+          store.dispatch('messageModel/stopSubscription');
         }
 
+      }
 
-        catch (error) {
-          console.error('Lambda 호출 실패:', error)
-          this.message = '저장 실패'
-        }
+
+      catch (error) {
+        console.error('Lambda 호출 실패:', error)
+        this.message = '저장 실패'
+      }
       
       console.log(this.message)
     
@@ -199,13 +241,38 @@ export default {
       }    
     },
     async logout(){
+
       const deleteCookieResult = await client.models.kakaoLoginCookie.delete({id: this.userKey})
       const loginResult = await client.models.kakaoLoginInfo.delete({id: this.userKey})
+      const registration = await navigator.serviceWorker.ready;
+
+  // 1. 현재 구독 정보 가져오기
+        const subscription = await registration.pushManager.getSubscription();
+        if (subscription) {
+          console.warn("❌ 푸시 구독 정보 없음 → 삭제할 것 없음");
+          
+        // ✅ deviceId: endpoint 기반으로 유일하게 생성 (또는 클라이언트에서 UUID 보내도 됨)
+      const deviceId = `${this.userKey}-${btoa(subscription.endpoint).slice(0, 12)}`; // 고유하게 만듦
+      client.models.PushInfo.delete({userKey: this.userKey, deviceId: deviceId})
+      // 3. 브라우저에서 구독 해제
+      const success = await subscription.unsubscribe();
+      if (success) {
+
+
+        
+        console.log("✅ 브라우저 푸시 구독 해제 완료");
+      } else {
+        console.warn("⚠️ 브라우저 구독 해제 실패 (이미 해제되었을 수 있음)");
+      }
+
+        }
+
       this.updateLoginState({expiredAt:-1,kakaoID:""})
       this.updateRoom({newRoom:"",newRegion:"", newDisplay:""})
       this.showKey = true;
       this.showID = true;
       this.loginExpired = -1
+      
       this.$emit('logout')
     },
     handleLoginSuccess(payload: { expiredAt: number; kakaoID: string }) {

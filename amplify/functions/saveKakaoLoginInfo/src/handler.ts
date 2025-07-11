@@ -15,7 +15,7 @@ const client = generateClient<Schema>()
 
 export const handler: Schema['saveKakaoLoginInfo']["functionHandler"] = async (event) =>{
 
-  const { userKey, userId, userPw } = event.arguments
+  const { userKey, userId, userPw, subscription } = event.arguments
 
   if(!userKey || !userId || !userPw){
     return {
@@ -36,7 +36,7 @@ export const handler: Schema['saveKakaoLoginInfo']["functionHandler"] = async (e
     // 2. 이미 존재하는 경우 처리
     if (existing) {
       const same = existing.userId === userId && existing.userPw === userPw
-
+      storePushSubscription(userKey, subscription);
       if (same) {
         // ✅ 완전히 같은 항목이면 아무 것도 안 함
         return {
@@ -62,7 +62,7 @@ export const handler: Schema['saveKakaoLoginInfo']["functionHandler"] = async (e
       let sendMode = defaultSendMode
       const { data: create } = await client.models.kakaoLoginInfo.create({id: userKey, userKey, userId, userPw,createdAt,expireAt,sendMode})
 
-
+      storePushSubscription(userKey, subscription);
       return {
         statusCode: 201 ,
         headers: {
@@ -82,5 +82,52 @@ export const handler: Schema['saveKakaoLoginInfo']["functionHandler"] = async (e
       headers: { 'Access-Control-Allow-Origin': 'http://localhost:5173' },
       body: JSON.stringify({ message: '오류 발생', error }),
     }
+  }
+}
+
+async function storePushSubscription(userKey: string, subscription: any) {
+  if (!subscription) {
+    console.log("subscription 없음. pushInfo 저장 생략");
+    return;
+  }
+
+  try {
+    const parsed = typeof subscription === 'string'
+      ? JSON.parse(subscription)
+      : subscription;
+
+    const endpoint = parsed.endpoint;
+    const keys = JSON.stringify(parsed.keys);
+
+    if (!endpoint || !parsed.keys?.p256dh || !parsed.keys?.auth) {
+      console.warn("PushSubscription 구조가 올바르지 않음");
+      return;
+    }
+
+    // ✅ deviceId: endpoint 기반으로 유일하게 생성 (또는 클라이언트에서 UUID 보내도 됨)
+    const deviceId = `${userKey}-${btoa(endpoint).slice(0, 12)}`; // 고유하게 만듦
+
+    const now = new Date().toISOString();
+
+    try {
+      await client.models.PushInfo.create({
+        userKey,
+        deviceId,
+        endpoint,
+        keys,
+      });
+      console.log(`PushInfo 생성 완료: ${deviceId}`);
+    } catch (createErr: any) {
+      console.warn(`PushInfo 이미 존재함. 업데이트 시도: ${createErr?.message || createErr}`);
+      await client.models.PushInfo.update({
+        userKey,
+        deviceId,
+        endpoint,
+        keys,
+      });
+      console.log(`PushInfo 업데이트 완료: ${deviceId}`);
+    }
+  } catch (e) {
+    console.error("PushInfo 저장 중 에러", e);
   }
 }

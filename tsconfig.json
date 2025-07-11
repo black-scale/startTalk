@@ -14,8 +14,10 @@
   "compilerOptions": {
     
     "target": "ES2022",
+    "module": "esnext",      
     "noEmit": true, 
     "moduleResolution": "node",
+    "types": ["vite/client"],  
     "resolveJsonModule": true,
     "esModuleInterop": true ,
     "allowJs": true,

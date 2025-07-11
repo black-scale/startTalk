@@ -29,7 +29,8 @@ interface KeywordEntry {
   set_time: TimeItem[]
   receiver: string
   last_send:string
-  userKey:string
+  userKey:string,
+  last_state:string | null
 }
 
 const startTriggers = ['ㅅ', 'ㅅㅌㅌ', 'ㅅㅅ', 'ㅆ'];
@@ -312,7 +313,8 @@ export const handler = async (event : any) =>{
               set_time: set_time ?? [],
               receiver: item.receiver,
               last_send: new Date().toISOString(),
-              userKey: item.userKey
+              userKey: item.userKey,
+              last_state: item.last_state ?? null
             }
 
         });
@@ -322,6 +324,11 @@ export const handler = async (event : any) =>{
         for (const entry of matchedEntries) {
           const formatted = await formatMessage(_message,_createdAt, entry);
           const message_to_send = getName(_message) + formatted
+
+          if (entry.last_state == formatted){
+            console.log("상태 변화가 감지되지 않았습니다: ", message_to_send)
+            continue
+          }
           console.log(`Formatted message to send to ${entry.receiver}:\n${message_to_send}`);
 
         // autosendserver 쿼리 호출
@@ -336,8 +343,25 @@ export const handler = async (event : any) =>{
             friendName: entry.receiver
             });
             
-            if (autosendResult.errors) {
-              console.error("autosendserver query failed:", autosendResult.errors);
+            let status_code = 500
+            let body = ""
+            if(autosendResult.data){
+              const parsed_autosend_result = JSON.parse(autosendResult.data.toString())
+              status_code = parsed_autosend_result.statusCode
+              body = parsed_autosend_result.body
+            }
+            
+             
+            if (autosendResult.errors || status_code != 200) {
+              let error_message = ""
+              if(autosendResult.errors){
+                error_message =  autosendResult.errors[0].message 
+              }
+              else{
+                error_message =  body
+              }
+              console.error("autosendserver query failed:", error_message);
+
               await client.models.startTalkMessageByUser.create({
                 keyword: entry.keyword,
                 room: entry.room,
@@ -347,7 +371,7 @@ export const handler = async (event : any) =>{
                 receiver: entry.receiver,
                 timestamp: new Date().toISOString(),
                 is_send: false,
-                errorMessage:  autosendResult.errors[0].message
+                errorMessage: error_message 
               })
             } else {
               console.log("autosendserver sent:", autosendResult.data);
@@ -367,7 +391,8 @@ export const handler = async (event : any) =>{
                 keyword: entry.keyword,
                 room : entry.room,
                 userKey: entry.userKey,
-                last_send : new Date().toISOString()
+                last_send : new Date().toISOString(),
+                last_state: formatted
               })
             }
           }                    
@@ -404,37 +429,7 @@ export const handler = async (event : any) =>{
         }
 
 
-          
-          // userKey로 pushInfo 테이블 조회
-          const { data: pushItem } = await client.models.PushInfo.get({id: entry.userKey})
-
-          if (!pushItem) {
-            console.log('No push subscriptions found for user:',  entry.userKey);
-          }
-        //   else{
-        //     const keys =  JSON.parse(pushItem.keys)
-        //     const subscription = {
-        //       endpoint: pushItem.endpoint,
-        //       keys: {
-        //         p256dh: keys.p256dh,
-        //         auth: keys.auth,
-        //       }
-        //     };
-
-
-        //     const push_result = await webpush.sendNotification(subscription, JSON.stringify({
-        //         title: '📢 StartTalk 알림',
-        //         body: "카카오톡 인증을 확인해주세요",
-        //       }));
-            
-        //     console.log("push result: ", push_result)
-        //     if (push_result.statusCode === 410 || push_result.statusCode === 404) {
-        //       console.log('Subscription expired or invalid. Consider deleting it.', pushItem.id);
-        //     } else {
-        //       console.error('Push failed:', push_result);
-            
-        //   }
-        // }         
+        
       }
     }
   }

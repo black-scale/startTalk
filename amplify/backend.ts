@@ -3,6 +3,7 @@ import { data } from './data/resource';
 import { autoSendServer } from './functions/autoSendServer/resource';
 import { saveKakaoLoginInfo } from './functions/saveKakaoLoginInfo/resource';
 import { startTalkSender } from './functions/startTalkSender/resource';
+import { pushSender } from './functions/pushSender/resource';
 
 import { Stack } from "aws-cdk-lib";
 import { Bucket } from "aws-cdk-lib/aws-s3";
@@ -14,6 +15,7 @@ const backend = defineBackend({
   autoSendServer,
   saveKakaoLoginInfo,
   startTalkSender,
+  pushSender
   
 });
 

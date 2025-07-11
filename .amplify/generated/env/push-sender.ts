@@ -82,9 +82,12 @@ type LambdaProvidedEnvVars = {
 
 /** Amplify backend environment variables available at runtime, this includes environment variables defined in `defineFunction` and by cross resource mechanisms */
 type AmplifyBackendEnvVars = {
+  API_ENDPOINT: string;
+  API_KEY: string;
+  VAPID_PUBLIC_KEY: string;
+  VAPID_PRIVATE_KEY: string;
   AMPLIFY_DATA_DEFAULT_NAME: string;
   AMPLIFY_DATA_MODEL_INTROSPECTION_SCHEMA_KEY: string;
   AMPLIFY_DATA_MODEL_INTROSPECTION_SCHEMA_BUCKET_NAME: string;
-  API_KEY: string;
   AMPLIFY_DATA_GRAPHQL_ENDPOINT: string;
 };

@@ -2,6 +2,7 @@ import { type ClientSchema, a, defineData,   } from "@aws-amplify/backend";
 import { saveKakaoLoginInfo } from "../functions/saveKakaoLoginInfo/resource"
 import { autoSendServer } from "../functions/autoSendServer/resource"
 import { startTalkSender } from "../functions/startTalkSender/resource";
+import { pushSender } from "../functions/pushSender/resource";
 
 
 /*== STEP 1 ===============================================================
@@ -54,6 +55,7 @@ const schema = a.schema({
       endpoint: a.string().required(),
       keys: a.string().required(),
     })
+    .identifier(["userKey", "deviceId"])
     .authorization((allow) => [allow.publicApiKey()])
     ,
     KeywordInfo: a
@@ -64,6 +66,7 @@ const schema = a.schema({
       set_time: a.json(),
       receiver: a.string().required(),
       last_send: a.datetime(),
+      last_state: a.string()
     })
     .identifier(["keyword", "room", "userKey"]) // ✅ 각 userKey마다 개별 항목 허용
     .secondaryIndexes(index => [
@@ -103,6 +106,7 @@ const schema = a.schema({
       userKey: a.string(),
       userId: a.string(),
       userPw: a.string(),
+      subscription: a.json()
     })
     .returns(a.json())
     .handler(a.handler.function(saveKakaoLoginInfo))
@@ -129,10 +133,22 @@ const schema = a.schema({
     .handler(a.handler.function(startTalkSender))
     .authorization((allow) => [allow.publicApiKey()]),
 
+    pushSender:a.query()
+    .arguments({
+      userKey: a.string().required(),
+      deviceId:a.string().required(),
+      title:a.string(),
+      body: a.string()
+
+    })
+        .returns(a.json())
+    .handler(a.handler.function(pushSender))
+    .authorization((allow) => [allow.publicApiKey()]),
+
 
      
 })
-.authorization(allow => [allow.resource(saveKakaoLoginInfo).to(['mutate', 'query']), allow.resource(autoSendServer).to(['mutate', 'query']), allow.resource(startTalkSender).to(['mutate', 'query'])])
+.authorization(allow => [allow.resource(saveKakaoLoginInfo).to(['mutate', 'query']), allow.resource(autoSendServer).to(['mutate', 'query']), allow.resource(startTalkSender).to(['mutate', 'query']), allow.resource(pushSender).to(['mutate', 'query'])])
 ;
 
 export type Schema = ClientSchema<typeof schema>;

@@ -1,0 +1,19 @@
+{
+  "name": "push-sender",
+  "version": "1.0.0",
+  "description": "",
+  "main": "handler.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "packageManager": "pnpm@10.11.1",
+  "dependencies": {
+    "@aws-amplify/platform-core": "^1.10.0",
+    "@types/web-push": "^3.6.4",
+    "aws-amplify": "^6.15.1",
+    "web-push": "^3.6.7"
+  }
+}
