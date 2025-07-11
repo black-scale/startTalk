@@ -13,7 +13,11 @@
         "$amplify/*": [
           "../../../../.amplify/generated/*"
         ]
-      }
-  },
+      },
+        "include": [
+        "src",
+        "web-push.d.ts" // 혹은 상대경로로 "amplify/functions/pushSender/src/web-push.d.ts"
+      ]
+    },
     
   }
